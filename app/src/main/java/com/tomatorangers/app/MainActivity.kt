@@ -1,18 +1,25 @@
 package com.tomatorangers.app
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.tomatorangers.app.databinding.ActivityMainBinding
 
-class MainActivity: AppCompatActivity() {
+class MainActivity: AppCompatActivity(), Detector.DetectorListener {
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraHandler: CameraHandler
+    private lateinit var detector: Detector
+    private var savedImageUri: Uri? = null
 
     // request multiple permissions
     private val activityResultLauncher =
@@ -40,7 +47,10 @@ class MainActivity: AppCompatActivity() {
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
 
-        cameraHandler = CameraHandler(this)
+        // INITs
+        cameraHandler = CameraHandler(this, viewBinding)
+        detector = Detector(this, Constants.MODEL_PATH, Constants.LABEL_PATH, this)
+        detector.setup()
 
         if (allPermissionsGranted()) {
             startCamera()
@@ -48,11 +58,59 @@ class MainActivity: AppCompatActivity() {
             requestPermissions()
         }
 
-        viewBinding.imageCaptureButton.setOnClickListener { cameraHandler.takePhoto() }
+        viewBinding.imageCaptureButton.setOnClickListener {
+            cameraHandler.takePhoto{ bitmap ->
+                detector.detect(bitmap)
+            }
+        }
     }
 
     private fun startCamera() {
         cameraHandler.startCamera(viewBinding.viewFinder.surfaceProvider)
+    }
+
+
+    /*
+        SAVING MODIFIED LOGIC
+    */
+
+    override fun onEmptyDetect() {
+        Log.d("Detection", "No objects detected")
+    }
+
+    override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {
+        val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, savedImageUri)
+
+        val modifiedBitmap = Draw.drawBoundingBoxes(bitmap, boundingBoxes)
+
+        saveModifiedImage(modifiedBitmap)
+    }
+
+    private fun saveModifiedImage(bitmap: Bitmap) {
+        // file name format
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, "modified_image_${System.currentTimeMillis()}.jpg")
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CameraX-Image")
+            }
+        }
+
+        // saving logic
+        val uri = this.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        uri?.let {
+            this.contentResolver.openOutputStream(it).use { outputStream ->
+                if (outputStream != null) {
+                    // Compress and save the bitmap
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                    Toast.makeText(this, "Modified image saved successfully", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Failed to save modified image", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } ?: run {
+            Toast.makeText(this, "Failed to create new image entry", Toast.LENGTH_SHORT).show()
+        }
     }
 
     /* PERMISSION EME */
