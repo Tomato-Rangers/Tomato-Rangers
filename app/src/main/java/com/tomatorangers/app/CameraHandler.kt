@@ -3,9 +3,7 @@ package com.tomatorangers.app
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -19,17 +17,12 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import com.tomatorangers.app.databinding.ActivityMainBinding
-import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Locale
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 class CameraHandler(private val context: Context, private val binding: ActivityMainBinding) {
     private var imageCapture: ImageCapture? = null
-    private var cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
-
-    private lateinit var detector: Detector
+    private var savedImageUri: Uri? = null
 
     fun startCamera(previewSurfaceProvider: Preview.SurfaceProvider) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -95,15 +88,28 @@ class CameraHandler(private val context: Context, private val binding: ActivityM
                 }
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    val msg = "Photo capture succeeded: ${output.savedUri}"
+                    savedImageUri = output.savedUri
+                    val msg = "Photo capture succeeded: $savedImageUri"
                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                     Log.d(TAG, msg)
 
                     // Load the bitmap from the saved URI
-                    output.savedUri?.let { uri ->
+                    savedImageUri?.let { uri ->
+                        Log.d(TAG, "Saved URI: $uri")
                         try {
-                            val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-                            onImageCaptured(bitmap) // Pass the bitmap to the callback
+                            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                                val bitmap = BitmapFactory.decodeStream(inputStream)
+                                if (bitmap != null) {
+                                    Log.d(TAG, "reached here")
+                                    onImageCaptured(bitmap) // Pass the bitmap to the callback
+                                } else {
+                                    Log.e(TAG, "Failed to decode bitmap: Bitmap is null")
+                                    Toast.makeText(context, "Failed to decode image", Toast.LENGTH_SHORT).show()
+                                }
+                            } ?: run {
+                                Log.e(TAG, "InputStream is null")
+                                Toast.makeText(context, "Failed to open image stream", Toast.LENGTH_SHORT).show()
+                            }
                         } catch (e: Exception) {
                             Log.e(TAG, "Failed to load bitmap: ${e.message}", e)
                             Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
@@ -112,6 +118,10 @@ class CameraHandler(private val context: Context, private val binding: ActivityM
                 }
             }
         )
+    }
+
+    fun getSavedImageUri(): Uri? {
+        return savedImageUri
     }
 
     companion object {

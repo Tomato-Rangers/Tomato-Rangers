@@ -104,8 +104,7 @@ class Detector(
         detectorListener.onDetect(bestBoxes, inferenceTime)
     }
 
-    private fun bestBox(array: FloatArray) : List<BoundingBox>? {
-
+    private fun bestBox(array: FloatArray): List<BoundingBox>? {
         val boundingBoxes = mutableListOf<BoundingBox>()
 
         for (c in 0 until numElements) {
@@ -113,8 +112,10 @@ class Detector(
             var maxIdx = -1
             var j = 4
             var arrayIdx = c + numElements * j
-            while (j < numChannel){
-                if (array[arrayIdx] > maxConf) {
+
+            // Ensure we don't go out of bounds
+            while (j < numChannel) {
+                if (arrayIdx < array.size && array[arrayIdx] > maxConf) {
                     maxConf = array[arrayIdx]
                     maxIdx = j - 4
                 }
@@ -122,34 +123,32 @@ class Detector(
                 arrayIdx += numElements
             }
 
-            if (maxConf > CONFIDENCE_THRESHOLD) {
+            // Check if maxIdx is valid before accessing labels
+            if (maxConf > CONFIDENCE_THRESHOLD && maxIdx >= 0 && maxIdx < labels.size) {
                 val clsName = labels[maxIdx]
-                val cx = array[c] // 0
-                val cy = array[c + numElements] // 1
-                val w = array[c + numElements * 2]
-                val h = array[c + numElements * 3]
-                val x1 = cx - (w/2F)
-                val y1 = cy - (h/2F)
-                val x2 = cx + (w/2F)
-                val y2 = cy + (h/2F)
-                if (x1 < 0F || x1 > 1F) continue
-                if (y1 < 0F || y1 > 1F) continue
-                if (x2 < 0F || x2 > 1F) continue
-                if (y2 < 0F || y2 > 1F) continue
+                val cx = array[c] // Center x
+                val cy = array[c + numElements] // Center y
+                val w = array[c + numElements * 2] // Width
+                val h = array[c + numElements * 3] // Height
+                val x1 = cx - (w / 2F)
+                val y1 = cy - (h / 2F)
+                val x2 = cx + (w / 2F)
+                val y2 = cy + (h / 2F)
 
-                boundingBoxes.add(
-                    BoundingBox(
-                        x1 = x1, y1 = y1, x2 = x2, y2 = y2,
-                        cx = cx, cy = cy, w = w, h = h,
-                        cnf = maxConf, cls = maxIdx, clsName = clsName
+                // Ensure bounding box coordinates are within valid range
+                if (x1 in 0F..1F && y1 in 0F..1F && x2 in 0F..1F && y2 in 0F..1F) {
+                    boundingBoxes.add(
+                        BoundingBox(
+                            x1 = x1, y1 = y1, x2 = x2, y2 = y2,
+                            cx = cx, cy = cy, w = w, h = h,
+                            cnf = maxConf, cls = maxIdx, clsName = clsName
+                        )
                     )
-                )
+                }
             }
         }
 
-        if (boundingBoxes.isEmpty()) return null
-
-        return applyNMS(boundingBoxes)
+        return if (boundingBoxes.isEmpty()) null else applyNMS(boundingBoxes)
     }
 
     private fun applyNMS(boxes: List<BoundingBox>) : MutableList<BoundingBox> {
