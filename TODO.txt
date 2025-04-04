@@ -1,0 +1,14 @@
+-Accuracy
+-Live (high prio)
+-Bounding box color
+
+
+HIGH PRIO
+- Live detection
+- accuracy indicator
+
+ADJUSTMENTS
+- bounding box color
+
+
+machine vision: analyzing the vitality of tomato using Yolov8

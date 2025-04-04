@@ -17,6 +17,7 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import com.tomatorangers.app.databinding.ActivityMainBinding
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -24,7 +25,7 @@ class CameraHandler(private val context: Context, private val binding: ActivityM
     private var imageCapture: ImageCapture? = null
     private var savedImageUri: Uri? = null
 
-    fun startCamera(previewSurfaceProvider: Preview.SurfaceProvider) {
+    private fun startCamera(previewSurfaceProvider: Preview.SurfaceProvider) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
         cameraProviderFuture.addListener({
@@ -54,34 +55,23 @@ class CameraHandler(private val context: Context, private val binding: ActivityM
         }, ContextCompat.getMainExecutor(context))
     }
 
+    fun startImageCapture(surfaceProvider: Preview.SurfaceProvider) {
+        startCamera(surfaceProvider)
+    }
+
     fun takePhoto(onImageCaptured: (Bitmap) -> Unit) {
         // Get a stable reference of the modifiable image capture use case
         val imageCapture = imageCapture ?: return
 
-        // Media storing
-        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.getDefault())
-            .format(System.currentTimeMillis())
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CameraX-Image")
-            }
-        }
-
-        // Create output options containing file + metadata
-        val outputOptions = ImageCapture.OutputFileOptions
-            .Builder(context.contentResolver,
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                contentValues)
-            .build()
+        val outputFileOptions = ImageCapture.OutputFileOptions.Builder(
+            File.createTempFile("temp_image", ".jpg", context.cacheDir)
+        ).build()
 
         // Setup image capture listener
         imageCapture.takePicture(
-            outputOptions,
+            outputFileOptions,
             ContextCompat.getMainExecutor(context),
             object : ImageCapture.OnImageSavedCallback {
-                // Error handling
                 override fun onError(exc: ImageCaptureException) {
                     Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
                     Toast.makeText(context, "Photo capture failed: ${exc.message}", Toast.LENGTH_SHORT).show()
@@ -89,26 +79,19 @@ class CameraHandler(private val context: Context, private val binding: ActivityM
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     savedImageUri = output.savedUri
-                    val msg = "Photo capture succeeded: $savedImageUri"
-                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                    Log.d(TAG, msg)
 
-                    // Load the bitmap from the saved URI
-                    savedImageUri?.let { uri ->
-                        Log.d(TAG, "Saved URI: $uri")
+                    // Load the bitmap from the captured image
+                    val uri = output.savedUri
+                    uri?.let {
                         try {
-                            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                            context.contentResolver.openInputStream(it)?.use { inputStream ->
                                 val bitmap = BitmapFactory.decodeStream(inputStream)
                                 if (bitmap != null) {
-                                    Log.d(TAG, "reached here")
                                     onImageCaptured(bitmap) // Pass the bitmap to the callback
                                 } else {
                                     Log.e(TAG, "Failed to decode bitmap: Bitmap is null")
                                     Toast.makeText(context, "Failed to decode image", Toast.LENGTH_SHORT).show()
                                 }
-                            } ?: run {
-                                Log.e(TAG, "InputStream is null")
-                                Toast.makeText(context, "Failed to open image stream", Toast.LENGTH_SHORT).show()
                             }
                         } catch (e: Exception) {
                             Log.e(TAG, "Failed to load bitmap: ${e.message}", e)
