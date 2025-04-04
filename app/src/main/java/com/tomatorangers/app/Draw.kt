@@ -13,7 +13,6 @@ object Draw {
             color = Color.RED
             style = Paint.Style.STROKE
             strokeWidth = 8f
-
             textSize = 50f
             textAlign = Paint.Align.CENTER
         }
@@ -29,8 +28,8 @@ object Draw {
 
             canvas.drawText(
                 box.clsName,
-                box.cx * bitmap.width, // center
-                box.y1 * bitmap.height - 10, // just above the box
+                box.cx * bitmap.width,
+                box.y1 * bitmap.height - 10,
                 paint
             )
         }

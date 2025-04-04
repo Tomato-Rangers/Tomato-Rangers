@@ -2,4 +2,6 @@
     <string name="app_name">Tomato Eme</string>
     <string name="take_photo">Take Photo</string>
     <string name="Switch">Live mode</string>
+    <string name="no_objects_detected">No objects detected</string>
+    <string name="detection_result">Detected %1$d objects</string>
 </resources>
