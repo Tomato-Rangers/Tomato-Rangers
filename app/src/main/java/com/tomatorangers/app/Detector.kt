@@ -114,7 +114,6 @@ class Detector(
             var j = 4
             var arrayIdx = c + numElements * j
 
-            // Ensure we don't go out of bounds
             while (j < numChannel) {
                 if (arrayIdx < array.size && array[arrayIdx] > maxConf) {
                     maxConf = array[arrayIdx]
@@ -124,19 +123,17 @@ class Detector(
                 arrayIdx += numElements
             }
 
-            // Check if maxIdx is valid before accessing labels
             if (maxConf > CONFIDENCE_THRESHOLD && maxIdx >= 0 && maxIdx < labels.size) {
                 val clsName = labels[maxIdx]
-                val cx = array[c] // Center x
-                val cy = array[c + numElements] // Center y
-                val w = array[c + numElements * 2] // Width
-                val h = array[c + numElements * 3] // Height
+                val cx = array[c]
+                val cy = array[c + numElements]
+                val w = array[c + numElements * 2]
+                val h = array[c + numElements * 3]
                 val x1 = cx - (w / 2F)
                 val y1 = cy - (h / 2F)
                 val x2 = cx + (w / 2F)
                 val y2 = cy + (h / 2F)
 
-                // Ensure bounding box coordinates are within valid range
                 if (x1 in 0F..1F && y1 in 0F..1F && x2 in 0F..1F && y2 in 0F..1F) {
                     boundingBoxes.add(
                         BoundingBox(
@@ -195,7 +192,7 @@ class Detector(
         private const val INPUT_STANDARD_DEVIATION = 255f
         private val INPUT_IMAGE_TYPE = DataType.FLOAT32
         private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
-        private const val CONFIDENCE_THRESHOLD = 0.8f
+        private const val CONFIDENCE_THRESHOLD = 0.7f
         private const val IOU_THRESHOLD = 0.5F
     }
 }

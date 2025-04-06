@@ -3,8 +3,6 @@ package com.tomatorangers.app
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -12,8 +10,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.viewbinding.ViewBinding
-import com.google.android.material.color.utilities.DislikeAnalyzer
+import androidx.core.view.isVisible
 import com.tomatorangers.app.databinding.ActivityMainBinding
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -57,11 +54,12 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
         cameraExecutor = Executors.newSingleThreadExecutor()
         detectionHandler = DetectionHandler(this, Constants.MODEL_PATH, Constants.LABEL_PATH, this)
         detector = Detector(this, Constants.MODEL_PATH, Constants.LABEL_PATH, this.detectionHandler)
-        imageCapturingHandler = ImageCapturingHandler(this)
-        liveDetectionHandler = LiveDetectionHandler(this, cameraExecutor!!, detector, viewBinding.viewFinder, viewBinding.boundingBoxOverlay)
-        cameraHandler = CameraHandler(liveDetectionHandler, imageCapturingHandler, viewBinding)
+        imageCapturingHandler = ImageCapturingHandler(this, viewBinding.preview)
+        liveDetectionHandler = LiveDetectionHandler(this, cameraExecutor!!, detector, viewBinding.boundingBoxOverlay, viewBinding.preview)
+        cameraHandler = CameraHandler(liveDetectionHandler, imageCapturingHandler)
 
         if (allPermissionsGranted()) {
+            viewBinding.detectionResultTextView.isVisible = isLiveDetection
             cameraHandler.startCamera(isLiveDetection)
         } else {
             requestPermissions()
@@ -70,17 +68,21 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
 
         viewBinding.mdswitch.setOnCheckedChangeListener { _, isChecked ->
             isLiveDetection = isChecked
+            viewBinding.detectionResultTextView.isVisible = isLiveDetection
+            viewBinding.camBtn.isVisible = !isLiveDetection
             cameraHandler.startCamera(isLiveDetection)
+            cameraHandler.isFlash = false
         }
 
-        // capture image if not in live detection mode
         viewBinding.camBtn.setOnClickListener {
-            if (!isLiveDetection) {
-                imageCapturingHandler.takePhoto { bitmap ->
-                    lastCapturedBitmap = bitmap
-                    detectionHandler.detect(bitmap)
-                }
+            imageCapturingHandler.takePhoto { bitmap ->
+                lastCapturedBitmap = bitmap
+                detectionHandler.detect(bitmap)
             }
+        }
+
+        viewBinding.flashBtn.setOnClickListener{
+            cameraHandler.toggleFlash(isLiveDetection)
         }
     }
 
@@ -91,37 +93,11 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
         liveDetectionHandler.stop()
     }
 
-    /* PERMISSION EME */
-    private fun requestPermissions() {
-        activityResultLauncher.launch(REQUIRED_PERMISSIONS)
-    }
-
-    private fun allPermissionsGranted() =
-            REQUIRED_PERMISSIONS.all {
-                ContextCompat.checkSelfPermission(baseContext, it) ==
-                        PackageManager.PERMISSION_GRANTED
-            }
-
-    companion object {
-        private val REQUIRED_PERMISSIONS =
-                mutableListOf(
-                                Manifest.permission.CAMERA,
-                                Manifest.permission.RECORD_AUDIO,
-                        )
-                        .apply {
-                            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-                                add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                            }
-                        }
-                        .toTypedArray()
-    }
-
     override fun onEmptyDetect() {
         Log.d("Detection", "No objects detected")
         runOnUiThread {
-            Toast.makeText(this, R.string.no_objects_detected, Toast.LENGTH_SHORT).show()
+            viewBinding.detectionResultTextView.text = getString(R.string.no_objects_detected)
         }
-
         boundingBoxOverlay.boundingBoxes.clear()
         boundingBoxOverlay.invalidate()
     }
@@ -139,11 +115,35 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
                     detectionHandler.saveModifiedImage(modifiedBitmap)
                 } else {
                     Log.e("Detection", "No captured bitmap available for processing.")
-                        Toast.makeText(this, "No image available for detection.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "No image available for detection.", Toast.LENGTH_SHORT).show()
                 }
             } else {
                 boundingBoxOverlay.setBoundingBoxes(boundingBoxes)
             }
         }
+    }
+
+    /* PERMISSION EME */
+    private fun requestPermissions() {
+        activityResultLauncher.launch(REQUIRED_PERMISSIONS)
+    }
+
+    private fun allPermissionsGranted() =
+        REQUIRED_PERMISSIONS.all {
+            ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
+        }
+
+    companion object {
+        private val REQUIRED_PERMISSIONS =
+            mutableListOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+            )
+                .apply {
+                    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                        add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    }
+                }
+                .toTypedArray()
     }
 }

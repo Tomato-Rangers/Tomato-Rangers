@@ -7,39 +7,33 @@ import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import java.io.File
 
-class ImageCapturingHandler(private val context: Context) {
+class ImageCapturingHandler(
+    private val context: Context,
+    private val preview: PreviewView
+) {
     private var imageCapture: ImageCapture? = null
     private var savedImageUri: Uri? = null
     private var isCapturing: Boolean = false
     private var cameraProvider: ProcessCameraProvider? = null
 
-    fun start(surfaceProvider: Preview.SurfaceProvider) {
+    var cameraControl: CameraControl? = null
+
+    fun start() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
         cameraProviderFuture.addListener({
             cameraProvider = cameraProviderFuture.get()
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.surfaceProvider = surfaceProvider
-                }
-
-            imageCapture = ImageCapture.Builder().build()
-
-            try {
-                cameraProvider?.unbindAll()
-                cameraProvider?.bindToLifecycle(context as AppCompatActivity, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture)
-            } catch (exc: Exception) {
-                Log.e("ImageCapturingHandler", "Use case binding failed", exc)
-            }
+            bindCameraUseCases()
         }, ContextCompat.getMainExecutor(context))
     }
 
@@ -47,7 +41,25 @@ class ImageCapturingHandler(private val context: Context) {
         isCapturing = false
         cameraProvider?.unbindAll()
         cameraProvider = null
-        Log.d("ImageCapturingHandler", "Image capture stopped.")
+        cameraControl = null
+    }
+
+    private fun bindCameraUseCases() {
+        val preview = Preview.Builder()
+            .build()
+            .also {
+                it.surfaceProvider = preview.surfaceProvider
+            }
+
+        imageCapture = ImageCapture.Builder().build()
+
+        try {
+            cameraProvider?.unbindAll()
+            val camera = cameraProvider?.bindToLifecycle(context as AppCompatActivity, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture)
+            cameraControl = camera?.cameraControl
+        } catch (exc: Exception) {
+            Log.e("ImageCapturingHandler", "Use case binding failed", exc)
+        }
     }
 
 

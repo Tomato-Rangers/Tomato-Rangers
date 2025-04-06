@@ -1,21 +1,14 @@
 package com.tomatorangers.app
 
-import android.content.Context
-import android.util.Log
-import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
-import androidx.core.content.ContextCompat
-import com.tomatorangers.app.databinding.ActivityMainBinding
-import java.util.concurrent.ExecutorService
+import androidx.camera.core.CameraControl
 
 class CameraHandler(
     private val liveDetectionHandler: LiveDetectionHandler,
-    private val imageCapturingHandler: ImageCapturingHandler,
-    private val viewBinding: ActivityMainBinding
+    private val imageCapturingHandler: ImageCapturingHandler
 ) {
+    var isFlash: Boolean = false
+    private var cameraControl: CameraControl? = null
+
     // camera mode state machine
     fun startCamera(isLiveDetection: Boolean) {
         if (isLiveDetection) {
@@ -23,7 +16,26 @@ class CameraHandler(
             liveDetectionHandler.start()
         } else {
             liveDetectionHandler.stop()
-            imageCapturingHandler.start(viewBinding.viewFinder.surfaceProvider)
+            imageCapturingHandler.start()
+        }
+    }
+
+    fun toggleFlash(isLiveDetection: Boolean) {
+        cameraControl = getCameraControl(isLiveDetection)
+
+        if (isFlash) {
+            cameraControl?.enableTorch(false)
+        } else {
+            cameraControl?.enableTorch(true)
+        }
+        isFlash = !isFlash
+    }
+
+    private fun getCameraControl(isLiveDetection: Boolean): CameraControl? {
+        return if (isLiveDetection) {
+            liveDetectionHandler.cameraControl
+        } else {
+            imageCapturingHandler.cameraControl
         }
     }
 }
