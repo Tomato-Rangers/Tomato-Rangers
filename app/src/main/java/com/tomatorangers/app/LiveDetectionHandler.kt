@@ -20,10 +20,13 @@ class LiveDetectionHandler(
     private val cameraExecutor: ExecutorService,
     private val detector: Detector,
     private val boundingBoxOverlay: BoundingBoxOverlay,
-    private val preview: PreviewView
+    private val preview: PreviewView,
+    private val detectionHandler: DetectionHandler
 ) : Detector.DetectorListener {
     private var cameraProvider: ProcessCameraProvider? = null
+    var lensFacing: Int = CameraSelector.LENS_FACING_BACK
     var cameraControl: CameraControl? = null
+    var isLiveDetection: Boolean = false
 
     init {
         detector.setup()
@@ -67,23 +70,30 @@ class LiveDetectionHandler(
             val matrix = Matrix().apply {
                 postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
             }
-            detector.detect(Bitmap.createBitmap(bitmapBuffer, 0, 0, bitmapBuffer.width, bitmapBuffer.height, matrix, true))
+
+            val bitmap = Bitmap.createBitmap(bitmapBuffer, 0, 0, bitmapBuffer.width, bitmapBuffer.height, matrix, true)
+            detectionHandler.bitmap = bitmap
+            detector.detect(bitmap)
         }
 
         try {
             cameraProvider?.unbindAll()
-            val camera = cameraProvider?.bindToLifecycle(context as AppCompatActivity, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageAnalyzer)
+            val cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(lensFacing)
+                .build()
+
+            val camera = cameraProvider?.bindToLifecycle(
+                context as AppCompatActivity,
+                cameraSelector,
+                preview,
+                imageAnalyzer)
             cameraControl = camera?.cameraControl
         } catch (exc: Exception) {
             Log.e("LiveDetectionHandler", "Use case binding failed", exc)
         }
     }
 
-    override fun onEmptyDetect() {
-        boundingBoxOverlay.setBoundingBoxes(emptyList())
-    }
+    override fun onEmptyDetect() {}
 
-    override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {
-        boundingBoxOverlay.setBoundingBoxes(boundingBoxes)
-    }
+    override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {}
 }

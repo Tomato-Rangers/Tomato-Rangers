@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 
 class BoundingBoxOverlay @JvmOverloads constructor(
@@ -33,7 +34,8 @@ class BoundingBoxOverlay @JvmOverloads constructor(
         super.onDraw(canvas)
         for (box in boundingBoxes) {
             paint.color = getPaintColor(box.cls)
-            paint.textSize = (box.y2 * height - box.y1 * height) * 0.06f
+            paint.textSize = (box.y2 * height - box.y1 * height) *
+                    (resources.getDimension(R.dimen.textSizeFactor) / resources.displayMetrics.density)
             paint.strokeWidth = 8f
 
             // center dot
@@ -49,11 +51,20 @@ class BoundingBoxOverlay @JvmOverloads constructor(
                 paint
             )
 
-            val displayText = "${box.clsName} (Confidence: ${String.format("%.2f", box.cnf * 100)})"
-            paint.getTextBounds(displayText, 0, displayText.length, textBounds)
-            paint.strokeWidth = paint.textSize * 0.1f
+            val vitality: String = if (
+                box.vit == DetectionHandler.Vitality.UNDETECTED ||
+                box.vit == DetectionHandler.Vitality.UNKNOWN
+                ) {
+                ""
+            } else {
+                box.vit.toString()
+            }
 
-            // place text info at bottom if top exceeds
+            val displayText = "$vitality ${box.clsName} (Confidence: ${String.format("%.2f", box.cnf * 100)})"
+            paint.getTextBounds(displayText, 0, displayText.length, textBounds)
+            paint.strokeWidth = paint.textSize * (resources.getDimension(R.dimen.strokeFactor) / resources.displayMetrics.density)
+
+            // adjust text info to bottom if it exceeds top screen
             val textYPosition: Float
             val textBackgroundYPosition: Float
             if (box.y1 * height < textBounds.height() + 20) {
@@ -73,6 +84,7 @@ class BoundingBoxOverlay @JvmOverloads constructor(
                 bgPaint
             )
 
+            // text
             paint.color = Color.WHITE
             canvas.drawText(
                 displayText,
@@ -91,7 +103,7 @@ class BoundingBoxOverlay @JvmOverloads constructor(
 
     // interchange color depending on object class
     private fun getPaintColor(cls: Int): Int {
-        return if (cls % 2 != 0 ) {
+        return if (cls == 0) {
             Color.MAGENTA
         } else {
             Color.BLUE

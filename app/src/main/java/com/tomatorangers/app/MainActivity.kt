@@ -1,13 +1,22 @@
 package com.tomatorangers.app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
+import android.view.MenuItem
+import android.view.View
+import android.widget.Button
+import android.widget.PopupMenu
+import android.widget.SeekBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -37,8 +46,7 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
                     }
                 }
                 if (!permissionGranted) {
-                    Toast.makeText(baseContext, "Permission request denied", Toast.LENGTH_SHORT)
-                            .show()
+                    Toast.makeText(baseContext, "Permission request denied", Toast.LENGTH_SHORT).show()
                 } else {
                     cameraHandler.startCamera(isLiveDetection)
                 }
@@ -52,10 +60,32 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
         // INITs
         boundingBoxOverlay = findViewById(R.id.boundingBoxOverlay)
         cameraExecutor = Executors.newSingleThreadExecutor()
-        detectionHandler = DetectionHandler(this, Constants.MODEL_PATH, Constants.LABEL_PATH, this)
-        detector = Detector(this, Constants.MODEL_PATH, Constants.LABEL_PATH, this.detectionHandler)
+
+        detectionHandler = DetectionHandler(
+            this,
+            Constants.TOMATO_MODEL_PATH,
+            Constants.ORANGE_MODEL_PATH,
+            Constants.MODEL_PATH,
+            Constants.LABEL_PATH,
+            Constants.RIPENESS_LABEL_PATH,
+            this,
+            boundingBoxOverlay)
+
+        detector = Detector(
+            this,
+            Constants.MODEL_PATH,
+            Constants.LABEL_PATH,
+            this.detectionHandler)
+
         imageCapturingHandler = ImageCapturingHandler(this, viewBinding.preview)
-        liveDetectionHandler = LiveDetectionHandler(this, cameraExecutor!!, detector, viewBinding.boundingBoxOverlay, viewBinding.preview)
+
+        liveDetectionHandler = LiveDetectionHandler(
+            this, cameraExecutor!!,
+            detector,
+            viewBinding.boundingBoxOverlay,
+            viewBinding.preview,
+            detectionHandler)
+
         cameraHandler = CameraHandler(liveDetectionHandler, imageCapturingHandler)
 
         if (allPermissionsGranted()) {
@@ -65,13 +95,20 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
             requestPermissions()
         }
 
+        uiSetup()
+    }
 
+    private fun uiSetup() {
         viewBinding.mdswitch.setOnCheckedChangeListener { _, isChecked ->
             isLiveDetection = isChecked
-            viewBinding.detectionResultTextView.isVisible = isLiveDetection
-            viewBinding.camBtn.isVisible = !isLiveDetection
+            detectionHandler.isLiveDetection = isLiveDetection
+
             cameraHandler.startCamera(isLiveDetection)
             cameraHandler.isFlash = false
+
+            // CAPTURE BUTTON VISIBILITY
+            viewBinding.detectionResultTextView.isVisible = isLiveDetection
+            viewBinding.camBtn.isVisible = !isLiveDetection
         }
 
         viewBinding.camBtn.setOnClickListener {
@@ -81,9 +118,97 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
             }
         }
 
-        viewBinding.flashBtn.setOnClickListener{
+        viewBinding.flashBtn.setOnClickListener {
             cameraHandler.toggleFlash(isLiveDetection)
         }
+
+        viewBinding.galleryBtn.setOnClickListener {
+            startActivity(Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI))
+        }
+
+        viewBinding.swapBtn.setOnClickListener {
+            cameraHandler.switchCamera(isLiveDetection)
+            cameraHandler.isFlash = false
+        }
+
+        viewBinding.settingsBtn.setOnClickListener { view ->
+            showPopupMenu(view)
+        }
+    }
+
+    private fun showPopupMenu(view: View) {
+        val popupMenu = PopupMenu(this, view)
+        popupMenu.menuInflater.inflate(R.menu.popup_menu, popupMenu.menu)
+
+        popupMenu.setOnMenuItemClickListener { item: MenuItem ->
+            when (item.itemId) {
+                R.id.option1 -> {
+                    Toast.makeText(this, "Option 1 selected", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                R.id.option2 -> {
+                    Toast.makeText(this, "Option 2 selected", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                R.id.sliderValueText -> {
+                    showSliderDialog()
+                    true
+                }
+                else -> false
+            }
+        }
+        popupMenu.show()
+    }
+
+    private fun showSliderDialog() {
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Adjust Confidence Level")
+            .setView(R.layout.dialog_slider)
+            .create()
+        dialog.setOnShowListener {
+            val sliderValueText = dialog.findViewById<TextView>(R.id.sliderValueText)
+            val confidenceSeekBar = dialog.findViewById<SeekBar>(R.id.confidenceSeekBar)
+            val closeButton = dialog.findViewById<Button>(R.id.closeButton)
+
+            confidenceSeekBar?.progress = (detector.confidenceThreshold * 100).toInt()
+            sliderValueText?.text =
+                getString(R.string.confidence_level, confidenceSeekBar?.progress)
+
+            confidenceSeekBar?.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, from:Boolean) {
+                    if (isLiveDetection) {
+                        liveDetectionHandler.stop()
+                    } else {
+                        imageCapturingHandler.stop()
+                    }
+
+                    detector.confidenceThreshold = progress / 100f
+                    sliderValueText?.text = getString(R.string.confidence_level_progress, progress)
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                    detectionHandler.setup()
+
+                    boundingBoxOverlay.boundingBoxes.clear()
+                    boundingBoxOverlay.invalidate()
+                }
+            })
+
+            closeButton?.setOnClickListener {
+                if (isLiveDetection) {
+                    liveDetectionHandler.start()
+                } else {
+                    imageCapturingHandler.start()
+                }
+                boundingBoxOverlay.boundingBoxes.clear()
+                boundingBoxOverlay.invalidate()
+                dialog.dismiss()
+            }
+        }
+        dialog.show()
     }
 
     override fun onDestroy() {
@@ -94,19 +219,24 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
     }
 
     override fun onEmptyDetect() {
-        Log.d("Detection", "No objects detected")
+        Log.d("ImageCapturing", getString(R.string.no_objects_detected))
+
         runOnUiThread {
-            viewBinding.detectionResultTextView.text = getString(R.string.no_objects_detected)
+            if (isLiveDetection) {
+                viewBinding.detectionResultTextView.text = getString(R.string.no_objects_detected)
+                boundingBoxOverlay.boundingBoxes.clear()
+                boundingBoxOverlay.invalidate()
+            }
         }
-        boundingBoxOverlay.boundingBoxes.clear()
-        boundingBoxOverlay.invalidate()
     }
 
     override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {
-        Log.d("Detection", "Detected ${boundingBoxes.size} objects in $inferenceTime ms")
+        Log.d("ImageCapturing", "Detected ${boundingBoxes.size} objects in $inferenceTime ms")
 
         runOnUiThread {
             viewBinding.detectionResultTextView.text = getString(R.string.detection_result, boundingBoxes.size)
+
+            Log.d("LOG", "Last captured bitmap: $lastCapturedBitmap")
 
             if (!isLiveDetection) {
                 if (lastCapturedBitmap != null) {
@@ -118,6 +248,8 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
                     Toast.makeText(this, "No image available for detection.", Toast.LENGTH_SHORT).show()
                 }
             } else {
+                Log.d("LiveDetection", "Drawing bounding boxes")
+
                 boundingBoxOverlay.setBoundingBoxes(boundingBoxes)
             }
         }
@@ -138,12 +270,10 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
             mutableListOf(
                 Manifest.permission.CAMERA,
                 Manifest.permission.RECORD_AUDIO,
-            )
-                .apply {
+            ).apply {
                     if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
                         add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     }
-                }
-                .toTypedArray()
+                }.toTypedArray()
     }
 }

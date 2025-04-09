@@ -23,7 +23,6 @@ class Detector(
     private val labelPath: String,
     private val detectorListener: DetectorListener
 ) {
-
     private var interpreter: Interpreter? = null
     private var labels = mutableListOf<String>()
 
@@ -36,6 +35,8 @@ class Detector(
         .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
         .add(CastOp(INPUT_IMAGE_TYPE))
         .build()
+
+    var confidenceThreshold: Float = CONFIDENCE_THRESHOLD
 
     fun setup() {
         val model = FileUtil.loadMappedFile(context, modelPath)
@@ -75,10 +76,7 @@ class Detector(
 
     fun detect(frame: Bitmap) {
         interpreter ?: return
-        if (tensorWidth == 0) return
-        if (tensorHeight == 0) return
-        if (numChannel == 0) return
-        if (numElements == 0) return
+        if (tensorWidth == 0 || tensorHeight == 0 || numChannel == 0 || numElements == 0) return
 
         var inferenceTime = SystemClock.uptimeMillis()
 
@@ -123,7 +121,7 @@ class Detector(
                 arrayIdx += numElements
             }
 
-            if (maxConf > CONFIDENCE_THRESHOLD && maxIdx >= 0 && maxIdx < labels.size) {
+            if (maxConf > confidenceThreshold && maxIdx >= 0 && maxIdx < labels.size) {
                 val clsName = labels[maxIdx]
                 val cx = array[c]
                 val cy = array[c + numElements]
@@ -139,7 +137,8 @@ class Detector(
                         BoundingBox(
                             x1 = x1, y1 = y1, x2 = x2, y2 = y2,
                             cx = cx, cy = cy, w = w, h = h,
-                            cnf = maxConf, cls = maxIdx, clsName = clsName
+                            cnf = maxConf, cls = maxIdx, clsName = clsName,
+                            vit = DetectionHandler.Vitality.UNKNOWN
                         )
                     )
                 }
@@ -171,7 +170,7 @@ class Detector(
         return selectedBoxes
     }
 
-    private fun calculateIoU(box1: BoundingBox, box2: BoundingBox): Float {
+    fun calculateIoU(box1: BoundingBox, box2: BoundingBox): Float {
         val x1 = maxOf(box1.x1, box2.x1)
         val y1 = maxOf(box1.y1, box2.y1)
         val x2 = minOf(box1.x2, box2.x2)
@@ -192,7 +191,7 @@ class Detector(
         private const val INPUT_STANDARD_DEVIATION = 255f
         private val INPUT_IMAGE_TYPE = DataType.FLOAT32
         private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
-        private const val CONFIDENCE_THRESHOLD = 0.7f
+        private const val CONFIDENCE_THRESHOLD = 0.5f
         private const val IOU_THRESHOLD = 0.5F
     }
 }

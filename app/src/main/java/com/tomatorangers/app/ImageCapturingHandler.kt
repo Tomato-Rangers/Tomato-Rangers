@@ -25,6 +25,7 @@ class ImageCapturingHandler(
     private var savedImageUri: Uri? = null
     private var isCapturing: Boolean = false
     private var cameraProvider: ProcessCameraProvider? = null
+    var lensFacing: Int = CameraSelector.LENS_FACING_BACK
 
     var cameraControl: CameraControl? = null
 
@@ -51,11 +52,20 @@ class ImageCapturingHandler(
                 it.surfaceProvider = preview.surfaceProvider
             }
 
-        imageCapture = ImageCapture.Builder().build()
+        imageCapture = ImageCapture.Builder()
+            .build()
 
         try {
             cameraProvider?.unbindAll()
-            val camera = cameraProvider?.bindToLifecycle(context as AppCompatActivity, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture)
+            val cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(lensFacing)
+                .build()
+
+            val camera = cameraProvider?.bindToLifecycle(
+                context as AppCompatActivity,
+                cameraSelector,
+                preview,
+                imageCapture)
             cameraControl = camera?.cameraControl
         } catch (exc: Exception) {
             Log.e("ImageCapturingHandler", "Use case binding failed", exc)

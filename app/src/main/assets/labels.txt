@@ -1,6 +1,2 @@
-Damaged Orange
-Damaged Tomato
-Ripe Orange
-Ripe Tomato
-Unripe Orange
-Unripe Tomato
+ORANGE
+TOMATO

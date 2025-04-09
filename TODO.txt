@@ -1,0 +1,1 @@
+Implement current live detection logic to the image processing
