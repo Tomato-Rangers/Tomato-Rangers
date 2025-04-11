@@ -11,13 +11,29 @@
 
     <androidx.camera.view.PreviewView
         android:id="@+id/preview"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintDimensionRatio="3:4"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.5"
+        app:scaleType="fillStart" />
 
     <com.tomatorangers.app.BoundingBoxOverlay
         android:id="@+id/boundingBoxOverlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:translationZ="5dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintDimensionRatio="3:4"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.5" />
 
     <ImageView
         android:id="@+id/detectedImageView"
@@ -66,7 +82,7 @@
         android:id="@+id/camBtn"
         android:layout_width="80dp"
         android:layout_height="80dp"
-        android:layout_marginBottom="50dp"
+        android:layout_marginBottom="15dp"
         android:background="@drawable/baseline_camera_24"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -102,11 +118,10 @@
         android:id="@+id/detectionResultTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginStart="16dp"
         android:text="@string/no_objects_detected"
         android:textColor="#FFFFFF"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintStart_toStartOf="@id/mdswitch"
+        app:layout_constraintEnd_toEndOf="@id/mdswitch"
         app:layout_constraintTop_toBottomOf="@id/mdswitch" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

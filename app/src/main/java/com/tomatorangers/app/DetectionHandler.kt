@@ -110,6 +110,8 @@ class DetectionHandler(
                 if (boundingBoxes.isNotEmpty()) {
                     Log.d("LiveDetection", "${boundingBoxes.size} Object Detected")
 
+                    // boundingBoxOverlay.setBoundingBoxes(boundingBoxes)
+
                     for (box in boundingBoxes) {
                         fruitType = detectFruitTypeFromBoundingBox(box)
                         Log.d("LiveDetection", "Detected fruit: $fruitType")
@@ -142,6 +144,7 @@ class DetectionHandler(
 
 
                     boundingBoxOverlay.setBoundingBoxes(boundingBoxes)
+                    listener.onDetect(boundingBoxes, inferenceTime)
 
                     // reset
                     fruitType = FruitType.UNKNOWN

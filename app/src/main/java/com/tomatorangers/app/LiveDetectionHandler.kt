@@ -64,13 +64,15 @@ class LiveDetectionHandler(
         imageAnalyzer.setAnalyzer(cameraExecutor) { imageProxy ->
             val bitmapBuffer = createBitmap(imageProxy.width, imageProxy.height)
             imageProxy.use { bitmapBuffer.copyPixelsFromBuffer(imageProxy.planes[0].buffer) }
-            imageProxy.close()
 
             val matrix = Matrix().apply {
                 postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
             }
 
             val bitmap = Bitmap.createBitmap(bitmapBuffer, 0, 0, bitmapBuffer.width, bitmapBuffer.height, matrix, true)
+
+            imageProxy.close()
+
             detectionHandler.bitmap = bitmap
             detector.detect(bitmap)
         }

@@ -42,7 +42,7 @@ class ImageCapturingHandler(
 
     private var bitmap: Bitmap? = null
     private var vitality: Vitality = Vitality.UNDETECTED
-    var fruitType: FruitType = FruitType.UNKNOWN
+    private var fruitType: FruitType = FruitType.UNKNOWN
     private var cnfArray: FloatArray = floatArrayOf(0.0f, 0.0f)
     private var aveCnf: Float = 0.00f
     private var tempBox: BoundingBox = BoundingBox(
@@ -224,7 +224,7 @@ class ImageCapturingHandler(
                     }
                 }
 
-                // draw bounding box here
+                // pass to parent for box drawing
                 listener.onDetect(boundingBoxes, inferenceTime)
 
                 // reset
@@ -238,7 +238,7 @@ class ImageCapturingHandler(
 
                 if (boundingBoxes.isNotEmpty()) {
                     for (box in boundingBoxes) {
-                        // evaluate box coords similarities
+                        // evaluate box coordinates similarity
                         val iou = if (fruitType == FruitType.TOMATO) {
                             tomatoDetector.calculateIoU(box, tempBox)
                         } else {

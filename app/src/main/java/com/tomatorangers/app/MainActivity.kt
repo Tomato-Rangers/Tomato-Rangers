@@ -117,8 +117,14 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
             cameraHandler.isFlash = false
 
             // CAPTURE BUTTON VISIBILITY
+            viewBinding.detectionResultTextView.text = getString(R.string.no_objects_detected)
             viewBinding.detectionResultTextView.isVisible = isLiveDetection
             viewBinding.camBtn.isVisible = !isLiveDetection
+
+            if (!isLiveDetection) {
+                boundingBoxOverlay.boundingBoxes.clear()
+                boundingBoxOverlay.invalidate()
+            }
         }
 
         viewBinding.camBtn.setOnClickListener {
@@ -126,22 +132,47 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
                 lastCapturedBitmap = bitmap
                 detectionHandler.detect(bitmap)
             }
+
+            if (!isLiveDetection) {
+                boundingBoxOverlay.boundingBoxes.clear()
+                boundingBoxOverlay.invalidate()
+            }
         }
 
         viewBinding.flashBtn.setOnClickListener {
             cameraHandler.toggleFlash(isLiveDetection)
+
+            if (!isLiveDetection) {
+                boundingBoxOverlay.boundingBoxes.clear()
+                boundingBoxOverlay.invalidate()
+            }
         }
 
         viewBinding.galleryBtn.setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI))
+
+            if (!isLiveDetection) {
+                boundingBoxOverlay.boundingBoxes.clear()
+                boundingBoxOverlay.invalidate()
+            }
         }
 
         viewBinding.swapBtn.setOnClickListener {
             cameraHandler.switchCamera(isLiveDetection)
             cameraHandler.isFlash = false
+
+            if (!isLiveDetection) {
+                boundingBoxOverlay.boundingBoxes.clear()
+                boundingBoxOverlay.invalidate()
+            }
         }
 
         viewBinding.settingsBtn.setOnClickListener { view ->
+            if (!isLiveDetection) {
+                boundingBoxOverlay.boundingBoxes.clear()
+                boundingBoxOverlay.invalidate()
+            }
+
             showPopupMenu(view)
         }
     }
@@ -231,22 +262,28 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
         Log.d("ImageCapturing", getString(R.string.no_objects_detected))
 
         runOnUiThread {
+            boundingBoxOverlay.boundingBoxes.clear()
+            boundingBoxOverlay.invalidate()
         }
     }
 
     override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {
         runOnUiThread {
-            viewBinding.detectionResultTextView.text = getString(R.string.detection_result, boundingBoxes.size)
-
-            Log.d("LOG", "Last captured bitmap: $lastCapturedBitmap")
-
-            if (lastCapturedBitmap != null) {
-                val modifiedBitmap = Draw.drawBoundingBoxes(lastCapturedBitmap!!, boundingBoxes)
-                viewBinding.detectedImageView.setImageBitmap(modifiedBitmap)
-                detectionHandler.saveModifiedImage(modifiedBitmap)
+            if (boundingBoxes.size > 1) {
+                viewBinding.detectionResultTextView.text = getString(R.string.detection_result, boundingBoxes.size)
             } else {
-                Log.e("Detection", "No captured bitmap available for processing.")
-                Toast.makeText(this, "No image available for detection.", Toast.LENGTH_SHORT).show()
+                viewBinding.detectionResultTextView.text = getString(R.string.detection_result, boundingBoxes.size).removeSuffix("s")
+            }
+
+            if (!isLiveDetection) {
+                if (lastCapturedBitmap != null) {
+                    val modifiedBitmap = Draw.drawBoundingBoxes(lastCapturedBitmap!!, boundingBoxes)
+                    viewBinding.detectedImageView.setImageBitmap(modifiedBitmap)
+                    detectionHandler.saveModifiedImage(modifiedBitmap)
+                } else {
+                    Log.e("Detection", "No captured bitmap available for processing.")
+                    Toast.makeText(this, "No image available for detection.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
