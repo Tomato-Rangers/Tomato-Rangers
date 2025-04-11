@@ -41,7 +41,16 @@ object Draw {
                 paint
             )
 
-            val displayText = "${box.clsName} (Confidence: ${String.format("%.2f", box.cnf * 100)})"
+            val vitality: String = if (
+                box.vit == DetectionHandler.Vitality.UNDETECTED ||
+                box.vit == DetectionHandler.Vitality.UNKNOWN
+            ) {
+                ""
+            } else {
+                box.vit.toString()
+            }
+
+            val displayText = "$vitality ${box.clsName} (Confidence: ${String.format("%.2f", box.cnf * 100)})"
             paint.getTextBounds(displayText, 0, displayText.length, textBounds)
             paint.strokeWidth = paint.textSize * 0.1f
 
@@ -80,7 +89,7 @@ object Draw {
 
     // interchange color depending on object class
     private fun getPaintColor(cls: Int): Int {
-        return if (cls % 2 != 0 ) {
+        return if (cls == 0) {
             Color.MAGENTA
         } else {
             Color.BLUE

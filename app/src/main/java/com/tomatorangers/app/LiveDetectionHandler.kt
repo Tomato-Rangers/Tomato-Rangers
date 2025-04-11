@@ -26,7 +26,6 @@ class LiveDetectionHandler(
     private var cameraProvider: ProcessCameraProvider? = null
     var lensFacing: Int = CameraSelector.LENS_FACING_BACK
     var cameraControl: CameraControl? = null
-    var isLiveDetection: Boolean = false
 
     init {
         detector.setup()

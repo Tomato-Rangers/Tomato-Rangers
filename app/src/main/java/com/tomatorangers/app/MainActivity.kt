@@ -77,7 +77,17 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
             Constants.LABEL_PATH,
             this.detectionHandler)
 
-        imageCapturingHandler = ImageCapturingHandler(this, viewBinding.preview)
+        imageCapturingHandler = ImageCapturingHandler(
+            this,
+            viewBinding.preview,
+            Constants.MODEL_PATH,
+            Constants.TOMATO_MODEL_PATH,
+            Constants.ORANGE_MODEL_PATH,
+            Constants.LABEL_PATH,
+            Constants.RIPENESS_LABEL_PATH,
+            this,
+            this
+        )
 
         liveDetectionHandler = LiveDetectionHandler(
             this, cameraExecutor!!,
@@ -142,14 +152,6 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
 
         popupMenu.setOnMenuItemClickListener { item: MenuItem ->
             when (item.itemId) {
-                R.id.option1 -> {
-                    Toast.makeText(this, "Option 1 selected", Toast.LENGTH_SHORT).show()
-                    true
-                }
-                R.id.option2 -> {
-                    Toast.makeText(this, "Option 2 selected", Toast.LENGTH_SHORT).show()
-                    true
-                }
                 R.id.sliderValueText -> {
                     showSliderDialog()
                     true
@@ -218,39 +220,33 @@ class MainActivity : AppCompatActivity(), DetectionHandler.DetectorListener {
         liveDetectionHandler.stop()
     }
 
+
+    /*
+        IMAGE PROCESSING DETECTION LOGIC WENT HERE
+        IDK WHY BUT ITS WORKING SO...
+        KEEP IT.
+        MIGHT REFACTOR IT AFTER THE DEADLINE
+     */
     override fun onEmptyDetect() {
         Log.d("ImageCapturing", getString(R.string.no_objects_detected))
 
         runOnUiThread {
-            if (isLiveDetection) {
-                viewBinding.detectionResultTextView.text = getString(R.string.no_objects_detected)
-                boundingBoxOverlay.boundingBoxes.clear()
-                boundingBoxOverlay.invalidate()
-            }
         }
     }
 
     override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {
-        Log.d("ImageCapturing", "Detected ${boundingBoxes.size} objects in $inferenceTime ms")
-
         runOnUiThread {
             viewBinding.detectionResultTextView.text = getString(R.string.detection_result, boundingBoxes.size)
 
             Log.d("LOG", "Last captured bitmap: $lastCapturedBitmap")
 
-            if (!isLiveDetection) {
-                if (lastCapturedBitmap != null) {
-                    val modifiedBitmap = Draw.drawBoundingBoxes(lastCapturedBitmap!!, boundingBoxes)
-                    viewBinding.detectedImageView.setImageBitmap(modifiedBitmap)
-                    detectionHandler.saveModifiedImage(modifiedBitmap)
-                } else {
-                    Log.e("Detection", "No captured bitmap available for processing.")
-                    Toast.makeText(this, "No image available for detection.", Toast.LENGTH_SHORT).show()
-                }
+            if (lastCapturedBitmap != null) {
+                val modifiedBitmap = Draw.drawBoundingBoxes(lastCapturedBitmap!!, boundingBoxes)
+                viewBinding.detectedImageView.setImageBitmap(modifiedBitmap)
+                detectionHandler.saveModifiedImage(modifiedBitmap)
             } else {
-                Log.d("LiveDetection", "Drawing bounding boxes")
-
-                boundingBoxOverlay.setBoundingBoxes(boundingBoxes)
+                Log.e("Detection", "No captured bitmap available for processing.")
+                Toast.makeText(this, "No image available for detection.", Toast.LENGTH_SHORT).show()
             }
         }
     }

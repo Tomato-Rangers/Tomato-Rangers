@@ -1,1 +1,3 @@
-Implement current live detection logic to the image processing
+refactor code
+everything is a mess
+but its working :)

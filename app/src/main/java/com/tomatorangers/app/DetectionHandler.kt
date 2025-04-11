@@ -70,12 +70,9 @@ class DetectionHandler(
 
     private fun detectFruitTypeFromBoundingBox(box: BoundingBox): FruitType {
         return when (box.cls) {
-            0 ->
-                FruitType.ORANGE
-            1 ->
-                FruitType.TOMATO
-            else ->
-                FruitType.UNKNOWN
+            0 -> FruitType.ORANGE
+            1 -> FruitType.TOMATO
+            else -> FruitType.UNKNOWN
         }
     }
 
@@ -87,6 +84,12 @@ class DetectionHandler(
         }
     }
 
+    /*
+        LIVE DETECTION LOGIC WENT HERE
+        IDK WHY BUT ITS WORKING SO...
+        KEEP IT.
+        MIGHT REFACTOR IT AFTER THE DEADLINE
+     */
     override fun onEmptyDetect() {
         if (isLiveDetection) {
             Log.d("LiveDetection", context.getString(R.string.no_objects_detected))
