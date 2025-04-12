@@ -1,4 +1,0 @@
-<resources>
-    <dimen name="strokeFactor">0.1dp</dimen>
-    <dimen name="textSizeFactor">0.06sp</dimen>
-</resources>

@@ -1,3 +1,0 @@
-refactor code
-everything is a mess
-but its working :)
