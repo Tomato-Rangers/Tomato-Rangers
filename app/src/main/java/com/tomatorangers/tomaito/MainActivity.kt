@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var liveDetectionHandler: LiveDetectionHandler
 
     var currentCameraMode: CameraHandler.CameraMode = CameraHandler.CameraMode.IMAGE_CAPTURE
+    var isSwitchingMode: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,30 +36,40 @@ class MainActivity : AppCompatActivity() {
         setup()
         permissionSetup()
         uiSetup()
+
+        cameraHandler.startCamera(CameraHandler.CameraMode.IMAGE_CAPTURE) // default startup mode
     }
 
     private fun permissionSetup() {
-        Log.d("MainActivity", "Checking permissions")
+        fun allPermissionsGranted() =
+            REQUIRED_PERMISSIONS.all {
+                ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
+            }
 
-        if (allPermissionsGranted()) {
-            cameraHandler.startCamera(currentCameraMode)
-        } else {
-            val activityResultLauncher =
-                registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-                    if (permissions.values.all { it }) {
-                        cameraHandler.startCamera(currentCameraMode)
-                    } else {
-                        Toast.makeText(baseContext, "Permission request denied", Toast.LENGTH_SHORT).show()
+        val activityResultLauncher =
+            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+                var permissionGranted = true
+                permissions.entries.forEach {
+                    if (it.key in REQUIRED_PERMISSIONS && !it.value) {
+                        permissionGranted = false
                     }
                 }
+                if (!permissionGranted) {
+                    Toast.makeText(baseContext, "Permission request denied", Toast.LENGTH_SHORT).show()
+                } else {
+                    cameraHandler.startInitialCamera()
+                }
+            }
+
+        // Request permissions if not already granted
+        if (!allPermissionsGranted()) {
             activityResultLauncher.launch(REQUIRED_PERMISSIONS)
+        } else {
+            cameraHandler.startInitialCamera()
         }
     }
 
-    private fun allPermissionsGranted() =
-        REQUIRED_PERMISSIONS.all {
-            ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
-        }
+
 
     private fun setup() {
         Log.d("MainActivity", "Setting up handlers")
@@ -97,34 +108,32 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        viewBinding.flashBtn.setOnClickListener { cameraHandler.toggleFlash()
-        }
+        viewBinding.flashBtn.setOnClickListener { cameraHandler.toggleFlash() }
 
         // open native gallery app on click
-        viewBinding.galleryBtn.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI))
-        }
+        viewBinding.galleryBtn.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)) }
 
         viewBinding.modeSwitch.setOnClickListener {
-            // cameraHandler.stopCamera()
+            isSwitchingMode = true
 
             currentCameraMode = if (currentCameraMode == CameraHandler.CameraMode.LIVE) {
+                viewBinding.root.postDelayed({
+                    isSwitchingMode = false
+                }, 3000)
                 viewBinding.liveDraw.visibility = View.GONE
                 CameraHandler.CameraMode.IMAGE_CAPTURE
             } else {
                 liveDetectionHandler.clear()
                 viewBinding.liveDraw.visibility = View.VISIBLE
+                isSwitchingMode = false
                 CameraHandler.CameraMode.LIVE
             }
-
             cameraHandler.startCamera(currentCameraMode)
         }
 
-        viewBinding.settingsBtn.setOnClickListener { view -> showPopupMenu(view)
-        }
+        viewBinding.settingsBtn.setOnClickListener { view -> showPopupMenu(view) }
 
-        viewBinding.switchCamBtn.setOnClickListener {
-            cameraHandler.switchCamera(currentCameraMode)
-        }
+        viewBinding.switchCamBtn.setOnClickListener { cameraHandler.switchCamera(currentCameraMode) }
 
         Log.d("MainActivity", "UI listeners DONE")
     }
@@ -184,6 +193,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
         dialog.show()
+    }
+
+    fun setCaptureButtonEnabled(enabled: Boolean) {
+        viewBinding.captureBtn.isEnabled = enabled
     }
 
     override fun onDestroy() {

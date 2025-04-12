@@ -20,7 +20,6 @@ class DetectionHandler(
     private lateinit var orangeDetector: Detector
     var confidenceThreshold: Float = 0.8f
 
-    var cameraMode: CameraHandler.CameraMode = CameraHandler.CameraMode.IMAGE_CAPTURE
     private var bitmap: Bitmap? = null
     private var fruitType = FruitType.UNKNOWN
     private var vitality = Vitality.UNDETECTED
@@ -95,8 +94,6 @@ class DetectionHandler(
     }
 
     fun detect(bitmap: Bitmap) {
-        Log.d("Detection", "Detecting bitmap")
-
         this.bitmap = bitmap
         fruitTypeDetector.detect(bitmap)
     }
@@ -127,20 +124,19 @@ class DetectionHandler(
         Log.d("Detection", context.getString(R.string.no_objects_detected))
 
         activity.runOnUiThread {
-
             if (fruitType == FruitType.UNKNOWN) {
                 // double check to avoid the detection buffer
-                if (cameraMode == CameraHandler.CameraMode.LIVE && activity.currentCameraMode == CameraHandler.CameraMode.LIVE) {
+                if (activity.currentCameraMode == CameraHandler.CameraMode.LIVE) {
                     liveDetectorListener.onEmptyDetect()
                 }
-                else if (cameraMode == CameraHandler.CameraMode.IMAGE_CAPTURE && activity.currentCameraMode == CameraHandler.CameraMode.IMAGE_CAPTURE) {
+                else if (activity.currentCameraMode == CameraHandler.CameraMode.IMAGE_CAPTURE) {
                     imageCaptureListener.onEmptyDetect()
                 }
             }
         }
     }
 
-    override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {
+    override fun onDetect(boundingBoxes: List<BoundingBox>) {
         activity.runOnUiThread {
 
             // determine which fruit
@@ -175,13 +171,15 @@ class DetectionHandler(
                     vitality = Vitality.UNDETECTED // reset
                 }
 
-                // double check to avoid the detection buffer
-                if (cameraMode == CameraHandler.CameraMode.IMAGE_CAPTURE && activity.currentCameraMode == CameraHandler.CameraMode.IMAGE_CAPTURE) {
-                    imageCapturingHandler.bitmap = bitmap
-                    imageCaptureListener.onDetect(boundingBoxes)
-                }
-                else if (cameraMode == CameraHandler.CameraMode.LIVE && activity.currentCameraMode == CameraHandler.CameraMode.LIVE) {
-                    liveDetectorListener.onDetect(boundingBoxes)
+                // double check to avoid the detection delay
+                if (!activity.isSwitchingMode) {
+                    if (activity.currentCameraMode == CameraHandler.CameraMode.IMAGE_CAPTURE) {
+                        imageCapturingHandler.bitmap = bitmap
+                        imageCaptureListener.onDetect(boundingBoxes, activity.isSwitchingMode)
+                    }
+                    else if (activity.currentCameraMode == CameraHandler.CameraMode.LIVE) {
+                        liveDetectorListener.onDetect(boundingBoxes, activity.isSwitchingMode)
+                    }
                 }
 
                 // reset
@@ -219,6 +217,6 @@ class DetectionHandler(
 
     interface DetectorListener {
         fun onEmptyDetect()
-        fun onDetect(boundingBoxes: List<BoundingBox>)
+        fun onDetect(boundingBoxes: List<BoundingBox>, isSwitchingMode: Boolean)
     }
 }

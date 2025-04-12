@@ -83,7 +83,7 @@ class Detector(
         interpreter ?: return
         if (tensorWidth == 0 || tensorHeight == 0 || numChannel == 0 || numElements == 0) return
 
-        var inferenceTime = SystemClock.uptimeMillis()
+        // var inferenceTime = SystemClock.uptimeMillis()
 
         val resizedBitmap = frame.scale(tensorWidth, tensorHeight, false)
 
@@ -97,7 +97,7 @@ class Detector(
 
 
         val bestBoxes = bestBox(output.floatArray)
-        inferenceTime = SystemClock.uptimeMillis() - inferenceTime
+        // inferenceTime = SystemClock.uptimeMillis() - inferenceTime
 
 
         if (bestBoxes == null) {
@@ -105,7 +105,8 @@ class Detector(
             return
         }
 
-        detectorListener.onDetect(bestBoxes, inferenceTime)
+        // detectorListener.onDetect(bestBoxes, inferenceTime)
+        detectorListener.onDetect(bestBoxes)
     }
 
     private fun bestBox(array: FloatArray): List<BoundingBox>? {
@@ -188,7 +189,8 @@ class Detector(
 
     interface DetectorListener {
         fun onEmptyDetect()
-        fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long)
+        //fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long)
+        fun onDetect(boundingBoxes: List<BoundingBox>)
     }
 
     companion object {

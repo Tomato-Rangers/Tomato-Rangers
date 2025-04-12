@@ -8,7 +8,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -23,6 +22,7 @@ class CameraHandler (
     private val detectionHandler: DetectionHandler,
     private val imageCapturingHandler: ImageCapturingHandler
 ) {
+    private var imageAnalyzer: ImageAnalysis? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private var cameraControl: CameraControl? = null
     private var cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
@@ -34,8 +34,38 @@ class CameraHandler (
         IMAGE_CAPTURE
     }
 
+    fun startInitialCamera() {
+        cameraExecutor = Executors.newSingleThreadExecutor()
+
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+        cameraProviderFuture.addListener({
+            cameraProvider = cameraProviderFuture.get()
+
+            val preview = Preview.Builder()
+                .build()
+                .also {
+                    it.surfaceProvider = previewView.surfaceProvider
+                }
+
+            try {
+                cameraProvider?.unbindAll()
+                val cameraSelector = CameraSelector.Builder()
+                    .requireLensFacing(lensFacing)
+                    .build()
+
+                val camera = cameraProvider?.bindToLifecycle(
+                    context as AppCompatActivity,
+                    cameraSelector,
+                    preview)
+
+                cameraControl = camera?.cameraControl
+            } catch (exc: Exception) {
+                Log.e("CameraHandler", "Use case of Live Detection binding failed", exc)
+            }
+        }, ContextCompat.getMainExecutor(context))
+    }
+
     fun startCamera(cameraMode: CameraMode) {
-        detectionHandler.cameraMode = cameraMode
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -59,8 +89,6 @@ class CameraHandler (
     }
 
     fun switchCamera(currentCameraMode: CameraMode) {
-        stopCamera()
-
         lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
             CameraSelector.LENS_FACING_FRONT
         } else {
@@ -78,19 +106,13 @@ class CameraHandler (
     private fun bindLive() {
         Log.d("CameraHandler", "Binding Live Detection")
 
-        val preview = Preview.Builder()
-            .build()
-            .also {
-                it.surfaceProvider = previewView.surfaceProvider
-            }
-
-        val imageAnalyzer = ImageAnalysis.Builder()
+        imageAnalyzer = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .setTargetRotation(previewView.display.rotation)
             .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
             .build()
 
-        imageAnalyzer.setAnalyzer(cameraExecutor) { imageProxy ->
+        imageAnalyzer!!.setAnalyzer(cameraExecutor) { imageProxy ->
             try {
                 val bitmapBuffer = createBitmap(imageProxy.width, imageProxy.height)
                 imageProxy.use { bitmapBuffer.copyPixelsFromBuffer(imageProxy.planes[0].buffer) }
@@ -109,11 +131,9 @@ class CameraHandler (
             }
         }
 
-        Log.d("CameraHandler", "Preview use case: $preview")
-        Log.d("CameraHandler", "Analyzer use case: $imageAnalyzer")
-
         try {
-            cameraProvider?.unbindAll()
+            imageCapturingHandler.imageCapture.let { cameraProvider?.unbind(it) }
+
             val cameraSelector = CameraSelector.Builder()
                 .requireLensFacing(lensFacing)
                 .build()
@@ -121,8 +141,8 @@ class CameraHandler (
             val camera = cameraProvider?.bindToLifecycle(
                 context as AppCompatActivity,
                 cameraSelector,
-                preview,
-                imageAnalyzer)
+                imageAnalyzer
+            )
 
             cameraControl = camera?.cameraControl
         } catch (exc: Exception) {
@@ -135,17 +155,11 @@ class CameraHandler (
     private fun bindImageCapture() {
         Log.d("CameraHandler", "Binding Image Capture")
 
-        val preview = Preview.Builder()
-            .build()
-            .also {
-                it.surfaceProvider = previewView.surfaceProvider
-            }
-
-        imageCapturingHandler.imageCapture = ImageCapture.Builder()
-            .build()
+        // imageCapturingHandler.imageCapture = ImageCapture.Builder().build()
 
         try {
-            cameraProvider?.unbindAll()
+            imageAnalyzer?.let { cameraProvider?.unbind(it) }
+
             val cameraSelector = CameraSelector.Builder()
                 .requireLensFacing(lensFacing)
                 .build()
@@ -153,8 +167,8 @@ class CameraHandler (
             val camera = cameraProvider?.bindToLifecycle(
                 context as AppCompatActivity,
                 cameraSelector,
-                preview,
-                imageCapturingHandler.imageCapture)
+                imageCapturingHandler.imageCapture
+            )
 
             cameraControl = camera?.cameraControl
         } catch (exc: Exception) {

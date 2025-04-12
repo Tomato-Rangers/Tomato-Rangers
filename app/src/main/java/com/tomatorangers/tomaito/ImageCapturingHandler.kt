@@ -19,48 +19,54 @@ class ImageCapturingHandler(
     private val detectionHandler: DetectionHandler,
     private val viewBinding: ActivityMainBinding
 ) : DetectionHandler.DetectorListener {
-    var imageCapture: ImageCapture? = null
+    var imageCapture: ImageCapture = ImageCapture.Builder().build()
     var bitmap: Bitmap? = null
+    private var isCapturing: Boolean = false
 
     fun takePhoto(onImageCaptured: (Bitmap) -> Unit) {
-        Log.d("ImageCapturingHandler", "Taking photo")
+        if (!isCapturing) {
+            Log.d("ImageCapturingHandler", "Taking photo")
 
-        val imageCapture = imageCapture ?: return
+            isCapturing = true
+            (context as MainActivity).setCaptureButtonEnabled(false)
 
-        val outputFileOptions = ImageCapture.OutputFileOptions.Builder(
-            File.createTempFile("temp_image", ".jpg", context.cacheDir)
-        ).build()
+            val outputFileOptions = ImageCapture.OutputFileOptions.Builder(
+                File.createTempFile("temp_image", ".jpg", context.cacheDir)
+            ).build()
 
-        imageCapture.takePicture(
-            outputFileOptions,
-            ContextCompat.getMainExecutor(context),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onError(exc: ImageCaptureException) {
-                    Log.e("ImageCapturingHandler", "Photo capture failed: ${exc.message}", exc)
-                    Toast.makeText(context, "Photo capture failed: ${exc.message}", Toast.LENGTH_SHORT).show()
-                }
+            imageCapture.takePicture(
+                outputFileOptions,
+                ContextCompat.getMainExecutor(context),
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onError(exc: ImageCaptureException) {
+                        Log.e("ImageCapturingHandler", "Photo capture failed: ${exc.message}", exc)
+                        Toast.makeText(context, "Photo capture failed: ${exc.message}", Toast.LENGTH_SHORT).show()
+                        isCapturing = false
+                        context.setCaptureButtonEnabled(true)
+                    }
 
-                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    output.savedUri?.let {
-                        try {
-                            context.contentResolver.openInputStream(it)?.use { inputStream ->
-                                val bitmap = BitmapFactory.decodeStream(inputStream)
-                                if (bitmap != null) {
-                                    onImageCaptured(bitmap)
-                                    detectionHandler.detect(bitmap)
-                                } else {
-                                    Log.e("ImageCapturingHandler", "Failed to decode bitmap: Bitmap is null")
-                                    Toast.makeText(context, "Failed to decode image", Toast.LENGTH_SHORT).show()
+                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                        output.savedUri?.let {
+                            try {
+                                context.contentResolver.openInputStream(it)?.use { inputStream ->
+                                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                                    if (bitmap != null) {
+                                        onImageCaptured(bitmap)
+                                        detectionHandler.detect(bitmap)
+                                    } else {
+                                        Log.e("ImageCapturingHandler", "Failed to decode bitmap: Bitmap is null")
+                                        Toast.makeText(context, "Failed to decode image", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
+                            } catch (e: Exception) {
+                                Log.e("ImageCapturingHandler", "Failed to load bitmap: ${e.message}", e)
+                                Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
                             }
-                        } catch (e: Exception) {
-                            Log.e("ImageCapturingHandler", "Failed to load bitmap: ${e.message}", e)
-                            Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
-            }
-        )
+            )
+        }
     }
 
     private fun saveModifiedImage(bitmap: Bitmap) {
@@ -98,17 +104,25 @@ class ImageCapturingHandler(
 
     override fun onEmptyDetect() {
         bitmap = null
+
+        isCapturing = false
+        (context as MainActivity).setCaptureButtonEnabled(true)
     }
 
-    override fun onDetect(boundingBoxes: List<BoundingBox>) {
-        Log.d("ImageCapturing", "Drawing boxes")
-        val modifiedBitmap = ImageDraw.drawBoundingBoxes(bitmap!!, boundingBoxes)
-        Log.d("ImageCapturing", "Boxes drawn")
+    override fun onDetect(boundingBoxes: List<BoundingBox>, isSwitchingMode: Boolean) {
+        if (!isSwitchingMode) {
+            Log.d("ImageCapturing", "Drawing boxes")
+            val modifiedBitmap = ImageDraw.drawBoundingBoxes(bitmap!!, boundingBoxes)
+            Log.d("ImageCapturing", "Boxes drawn")
 
-        viewBinding.detectedImageView.setImageBitmap(modifiedBitmap)
+            viewBinding.detectedImageView.setImageBitmap(modifiedBitmap)
 
-        Log.d("ImageCapturing", "Saving image")
-        saveModifiedImage(modifiedBitmap)
-        Log.d("ImageCapturing", "Image saved")
+            Log.d("ImageCapturing", "Saving image")
+            saveModifiedImage(modifiedBitmap)
+            Log.d("ImageCapturing", "Image saved")
+        }
+
+        isCapturing = false
+        (context as MainActivity).setCaptureButtonEnabled(true)
     }
 }

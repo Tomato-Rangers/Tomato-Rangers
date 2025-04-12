@@ -16,9 +16,13 @@ class LiveDetectionHandler(
         clear()
     }
 
-    override fun onDetect(boundingBoxes: List<BoundingBox>) {
-        Log.d("LiveDetection", "Drawing live boxes")
+    override fun onDetect(boundingBoxes: List<BoundingBox>, isSwitchingMode: Boolean) {
+        if (!isSwitchingMode) {
+            Log.d("LiveDetection", "Drawing live boxes")
 
-        liveDraw.setBoundingBoxes(boundingBoxes)
+            liveDraw.setBoundingBoxes(boundingBoxes)
+
+            Log.d("LiveDetection", "Boxes drawn")
+        }
     }
 }
