@@ -98,9 +98,10 @@ class CameraHandler (
         startCamera(currentCameraMode)
     }
 
-    fun toggleFlash() {
+    fun toggleFlash(): Boolean {
         cameraControl?.enableTorch(!isFlash)
         isFlash = !isFlash
+        return isFlash
     }
 
     private fun bindLive() {

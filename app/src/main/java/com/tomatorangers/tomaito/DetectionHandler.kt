@@ -99,11 +99,16 @@ class DetectionHandler(
     }
 
     private fun detectFruitType(box: BoundingBox): FruitType {
-        return when (box.cls) {
-            0 -> FruitType.ORANGE
-            1 -> FruitType.TOMATO
-            else -> FruitType.UNKNOWN
-        }
+        val fruitTypes = arrayOf(
+            FruitType.ORANGE,
+            FruitType.TOMATO,
+            FruitType.ORANGE,
+            FruitType.TOMATO,
+            FruitType.ORANGE,
+            FruitType.TOMATO
+        )
+
+        return fruitTypes.getOrElse(box.cls) { FruitType.ORANGE }
     }
 
     private fun detectRipeness(box: BoundingBox): Vitality {

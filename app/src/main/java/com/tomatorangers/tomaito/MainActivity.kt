@@ -108,7 +108,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        viewBinding.flashBtn.setOnClickListener { cameraHandler.toggleFlash() }
+        viewBinding.flashBtn.setOnClickListener {
+            if (cameraHandler.toggleFlash()) {
+                viewBinding.flashBtn.setBackgroundResource(R.drawable.flash_on)
+            } else {
+                viewBinding.flashBtn.setBackgroundResource(R.drawable.flash_off)
+            }
+        }
 
         // open native gallery app on click
         viewBinding.galleryBtn.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)) }
