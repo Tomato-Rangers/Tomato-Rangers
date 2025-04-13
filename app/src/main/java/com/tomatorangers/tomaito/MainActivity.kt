@@ -74,8 +74,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-
     private fun setup() {
         Log.d("MainActivity", "Setting up handlers")
 

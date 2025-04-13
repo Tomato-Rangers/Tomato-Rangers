@@ -104,9 +104,7 @@ class DetectionHandler(
         fruitTypeDetector.detect(bitmap)
     }
 
-    private fun detectFruitType(box: Int): FruitType {
-        return if (box % 2 == 0) FruitType.ORANGE else FruitType.TOMATO
-    }
+    private fun detectFruitType(box: Int): FruitType = if (box == 0) FruitType.ORANGE else FruitType.TOMATO
 
     private fun detectRipeness(box: BoundingBox): Vitality {
         return when (box.cls) {
