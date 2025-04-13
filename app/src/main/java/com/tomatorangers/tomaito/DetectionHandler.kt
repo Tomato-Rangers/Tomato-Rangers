@@ -58,6 +58,7 @@ class DetectionHandler(
         imageCaptureListener = imageCapturingHandler
         liveDetectorListener = liveDetectionHandler
 
+        Log.d("Detector", "Setting up Fruit Type Detector")
         fruitTypeDetector = Detector(
             context,
             Constants.FRUIT_TYPE_MODEL_PATH,
@@ -66,7 +67,9 @@ class DetectionHandler(
         )
         fruitTypeDetector.confidenceThreshold = confidenceThreshold
         fruitTypeDetector.setup()
+        Log.d("Detector", "Fruit Type Detector DONE")
 
+        Log.d("Detector", "Setting up Tomato Ripeness Detector")
         tomatoDetector = Detector(
             context,
             Constants.TOMATO_MODEL_PATH,
@@ -75,7 +78,9 @@ class DetectionHandler(
         )
         tomatoDetector.confidenceThreshold = confidenceThreshold
         tomatoDetector.setup()
+        Log.d("Detector", "Tomato Ripeness Detector DONE")
 
+        Log.d("Detector", "Setting up Orange Ripeness Detector")
         orangeDetector = Detector(
             context,
             Constants.ORANGE_MODEL_PATH,
@@ -89,6 +94,7 @@ class DetectionHandler(
             confidenceThreshold
         }
         orangeDetector.setup()
+        Log.d("Detector", "Orange Ripeness Detector DONE")
 
         Log.d("DetectionHandler", "DetectionHandler DONE")
     }
@@ -98,17 +104,8 @@ class DetectionHandler(
         fruitTypeDetector.detect(bitmap)
     }
 
-    private fun detectFruitType(box: BoundingBox): FruitType {
-        val fruitTypes = arrayOf(
-            FruitType.ORANGE,
-            FruitType.TOMATO,
-            FruitType.ORANGE,
-            FruitType.TOMATO,
-            FruitType.ORANGE,
-            FruitType.TOMATO
-        )
-
-        return fruitTypes.getOrElse(box.cls) { FruitType.ORANGE }
+    private fun detectFruitType(box: Int): FruitType {
+        return if (box % 2 == 0) FruitType.ORANGE else FruitType.TOMATO
     }
 
     private fun detectRipeness(box: BoundingBox): Vitality {
@@ -128,8 +125,8 @@ class DetectionHandler(
     override fun onEmptyDetect() {
         Log.d("Detection", context.getString(R.string.no_objects_detected))
 
-        activity.runOnUiThread {
-            if (fruitType == FruitType.UNKNOWN) {
+        if (fruitType == FruitType.UNKNOWN) {
+            activity.runOnUiThread {
                 // double check to avoid the detection buffer
                 if (activity.currentCameraMode == CameraHandler.CameraMode.LIVE) {
                     liveDetectorListener.onEmptyDetect()
@@ -138,44 +135,45 @@ class DetectionHandler(
                     imageCaptureListener.onEmptyDetect()
                 }
             }
+
+            bitmap?.recycle()
         }
     }
 
     override fun onDetect(boundingBoxes: List<BoundingBox>) {
-        activity.runOnUiThread {
+        // determine which fruit
+        if (fruitType == FruitType.UNKNOWN) {
+            Log.d("Detection", context.getString(R.string.object_count, boundingBoxes.size))
 
-            // determine which fruit
-            if (fruitType == FruitType.UNKNOWN) {
-                Log.d("Detection", context.getString(R.string.object_count, boundingBoxes.size))
+            for (box in boundingBoxes) {
+                fruitType = detectFruitType(box.cls)
+                Log.d("Detection", "Detected fruit: $fruitType")
 
-                for (box in boundingBoxes) {
-                    fruitType = detectFruitType(box)
-                    Log.d("Detection", "Detected fruit: $fruitType")
+                tempBox = box
+                cnfArray[0] = box.cnf
 
-                    tempBox = box
-                    cnfArray[0] = box.cnf
-
-                    when (fruitType) {
-                        FruitType.TOMATO -> {
-                            bitmap?.let { tomatoDetector.detect(it) }
-                        }
-                        else -> {
-                            bitmap?.let { orangeDetector.detect(it) }
-                        }
+                when (fruitType) {
+                    FruitType.TOMATO -> {
+                        bitmap?.let { tomatoDetector.detect(it) }
                     }
-
-                    box.vit = vitality
-                    Log.d("Detection", "$fruitType vitality: $vitality")
-
-                    // set cnf to the average cnf of both detection
-                    // otherwise it use its fruit type cnf
-                    if (box.vit != Vitality.UNKNOWN) {
-                        box.cnf = (cnfArray[0] + cnfArray[1]) / 2
+                    else -> {
+                        bitmap?.let { orangeDetector.detect(it) }
                     }
-
-                    vitality = Vitality.UNDETECTED // reset
                 }
 
+                box.vit = vitality
+                Log.d("Detection", "$fruitType vitality: $vitality")
+
+                // set cnf to the average cnf of both detection
+                // otherwise it use its fruit type cnf
+                if (box.vit != Vitality.UNKNOWN && box.vit != Vitality.UNDETECTED) {
+                    box.cnf = (cnfArray[0] + cnfArray[1]) / 2
+                }
+
+                vitality = Vitality.UNDETECTED // reset
+            }
+
+            activity.runOnUiThread {
                 // double check to avoid the detection delay
                 if (!activity.isSwitchingMode) {
                     if (activity.currentCameraMode == CameraHandler.CameraMode.IMAGE_CAPTURE) {
@@ -186,36 +184,34 @@ class DetectionHandler(
                         liveDetectorListener.onDetect(boundingBoxes, activity.isSwitchingMode)
                     }
                 }
-
-                // reset
-                fruitType = FruitType.UNKNOWN
-                vitality = Vitality.UNDETECTED
             }
 
-            // evaluate the vitality of the fruit
-            else if (vitality == Vitality.UNDETECTED) {
-                Log.d("Detection", "Evaluating Vitality")
+            fruitType = FruitType.UNKNOWN // reset
+        }
 
-                for (box in boundingBoxes) {
-                    // evaluate box coordinates similarity
-                    val iou = if (fruitType == FruitType.TOMATO) {
-                        tomatoDetector.calculateIoU(box, tempBox)
-                    } else {
-                        orangeDetector.calculateIoU(box, tempBox)
-                    }
+        // evaluate the vitality of the fruit
+        else if (vitality == Vitality.UNDETECTED) {
+            Log.d("Detection", "Evaluating Vitality")
 
-                    if (iou > 0.6) {
-                        Log.d("Detection", "Similar box found for vitality checking")
-
-                        vitality = detectRipeness(box)
-                        cnfArray[1] = box.cnf
-                    } else {
-                        Log.d("Detection", "Box does not match")
-
-                        vitality = Vitality.UNKNOWN
-                    }
-                    break
+            for (box in boundingBoxes) {
+                // evaluate box coordinates similarity
+                val iou = if (fruitType == FruitType.TOMATO) {
+                    tomatoDetector.calculateIoU(box, tempBox)
+                } else {
+                    orangeDetector.calculateIoU(box, tempBox)
                 }
+
+                if (iou > 0.6) {
+                    Log.d("Detection", "Similar box found for vitality checking")
+
+                    vitality = detectRipeness(box)
+                    cnfArray[1] = box.cnf
+                } else {
+                    Log.d("Detection", "Box does not match")
+
+                    vitality = Vitality.UNKNOWN
+                }
+                break
             }
         }
     }

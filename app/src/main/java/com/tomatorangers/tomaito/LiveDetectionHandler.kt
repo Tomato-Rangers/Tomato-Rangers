@@ -5,6 +5,8 @@ import android.util.Log
 class LiveDetectionHandler(
     private val liveDraw: LiveDraw
 ) : DetectionHandler.DetectorListener {
+
+    // clear live view
     fun clear() {
         liveDraw.boundingBoxes.clear()
         liveDraw.invalidate()
@@ -12,17 +14,16 @@ class LiveDetectionHandler(
 
     override fun onEmptyDetect() {
         Log.d("LiveDetection", "Clearing live view")
-
         clear()
     }
 
     override fun onDetect(boundingBoxes: List<BoundingBox>, isSwitchingMode: Boolean) {
         if (!isSwitchingMode) {
             Log.d("LiveDetection", "Drawing live boxes")
-
             liveDraw.setBoundingBoxes(boundingBoxes)
-
             Log.d("LiveDetection", "Boxes drawn")
+        } else {
+            Log.d("LiveDetection", "Switching mode, boxes will not be drawn")
         }
     }
 }

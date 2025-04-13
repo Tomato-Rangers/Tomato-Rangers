@@ -40,7 +40,7 @@ class LiveDraw @JvmOverloads constructor(
             // center dot
             val centerX = box.cx * width
             val centerY = (box.y1 * height + box.y2 * height) / 2
-            canvas.drawCircle(centerX, centerY, 5f, paint)
+            canvas.drawCircle(centerX, centerY, 3f, paint)
 
             canvas.drawRect(
                 box.x1 * width,

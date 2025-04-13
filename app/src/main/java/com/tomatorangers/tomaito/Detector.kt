@@ -2,8 +2,7 @@ package com.tomatorangers.tomaito
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.os.SystemClock
-import android.util.Log
+import androidx.core.graphics.scale
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.support.common.FileUtil
@@ -16,7 +15,6 @@ import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
-import androidx.core.graphics.scale
 
 class Detector(
     private val context: Context,
@@ -40,8 +38,6 @@ class Detector(
     var confidenceThreshold: Float = CONFIDENCE_THRESHOLD
 
     fun setup() {
-        Log.d("Detector", "Setting up Detector")
-
         val model = FileUtil.loadMappedFile(context, modelPath)
         val options = Interpreter.Options()
         options.numThreads = 4
@@ -70,8 +66,6 @@ class Detector(
         } catch (e: IOException) {
             e.printStackTrace()
         }
-
-        Log.d("Detector", "Detector DONE")
     }
 
     fun clear() {

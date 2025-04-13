@@ -15,6 +15,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.CameraSelector
 import androidx.core.content.ContextCompat
 import com.tomatorangers.tomaito.databinding.ActivityMainBinding
 
@@ -36,8 +37,6 @@ class MainActivity : AppCompatActivity() {
         setup()
         permissionSetup()
         uiSetup()
-
-        cameraHandler.startCamera(CameraHandler.CameraMode.IMAGE_CAPTURE) // default startup mode
     }
 
     private fun permissionSetup() {
@@ -57,7 +56,10 @@ class MainActivity : AppCompatActivity() {
                 if (!permissionGranted) {
                     Toast.makeText(baseContext, "Permission request denied", Toast.LENGTH_SHORT).show()
                 } else {
-                    cameraHandler.startInitialCamera()
+                    viewBinding.root.post {
+                        cameraHandler.startInitialCamera()
+                        cameraHandler.startCamera(CameraHandler.CameraMode.IMAGE_CAPTURE)// default startup mode
+                    }
                 }
             }
 
@@ -65,7 +67,10 @@ class MainActivity : AppCompatActivity() {
         if (!allPermissionsGranted()) {
             activityResultLauncher.launch(REQUIRED_PERMISSIONS)
         } else {
-            cameraHandler.startInitialCamera()
+            viewBinding.root.post {
+                cameraHandler.startInitialCamera()
+                cameraHandler.startCamera(CameraHandler.CameraMode.IMAGE_CAPTURE) // default startup mode
+            }
         }
     }
 
@@ -109,6 +114,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewBinding.flashBtn.setOnClickListener {
+            // ui update
             if (cameraHandler.toggleFlash()) {
                 viewBinding.flashBtn.setBackgroundResource(R.drawable.flash_on)
             } else {
@@ -117,15 +123,25 @@ class MainActivity : AppCompatActivity() {
         }
 
         // open native gallery app on click
-        viewBinding.galleryBtn.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)) }
+        viewBinding.galleryBtn.setOnClickListener {
+            startActivity(Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI))
+
+            // reset flash
+            viewBinding.root.post {
+                cameraHandler.isFlash = false
+                viewBinding.flashBtn.setBackgroundResource(R.drawable.flash_off)
+            }
+        }
 
         viewBinding.modeSwitch.setOnClickListener {
             isSwitchingMode = true
 
             currentCameraMode = if (currentCameraMode == CameraHandler.CameraMode.LIVE) {
+                // to avoid image saving on detection delay
                 viewBinding.root.postDelayed({
                     isSwitchingMode = false
                 }, 3000)
+
                 viewBinding.liveDraw.visibility = View.GONE
                 CameraHandler.CameraMode.IMAGE_CAPTURE
             } else {
@@ -134,12 +150,26 @@ class MainActivity : AppCompatActivity() {
                 isSwitchingMode = false
                 CameraHandler.CameraMode.LIVE
             }
+
             cameraHandler.startCamera(currentCameraMode)
         }
 
         viewBinding.settingsBtn.setOnClickListener { view -> showPopupMenu(view) }
 
-        viewBinding.switchCamBtn.setOnClickListener { cameraHandler.switchCamera(currentCameraMode) }
+        viewBinding.switchCamBtn.setOnClickListener {
+            cameraHandler.switchCamera(currentCameraMode)
+
+            // reset flash
+            viewBinding.root.post {
+                if (cameraHandler.lensFacing == CameraSelector.LENS_FACING_FRONT) {
+                    cameraHandler.isFlash = false
+                    viewBinding.flashBtn.visibility = View.GONE
+                    viewBinding.flashBtn.setBackgroundResource(R.drawable.flash_off)
+                } else {
+                    viewBinding.flashBtn.visibility = View.VISIBLE
+                }
+            }
+        }
 
         Log.d("MainActivity", "UI listeners DONE")
     }
@@ -180,16 +210,18 @@ class MainActivity : AppCompatActivity() {
                     val currentTime = System.currentTimeMillis()
                     if (currentTime - lastUpdateTime > 300) { // debounce with 300ms interval
                         lastUpdateTime = currentTime
-                        detectionHandler.confidenceThreshold = progress / 100f
-                        sliderValueText?.text = getString(R.string.confidence_level, progress)
+
+                        // set cnf threshold only if it changes
+                        val progressPercentage = progress / 100f
+                        if (progressPercentage != detectionHandler.confidenceThreshold) {
+                            detectionHandler.confidenceThreshold = progressPercentage
+                            sliderValueText?.text = getString(R.string.confidence_level, progress)
+                        }
                     }
                 }
 
                 override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-
-                override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                    detectionHandler.setup()
-                }
+                override fun onStopTrackingTouch(seekBar: SeekBar?) { detectionHandler.setup() }
             })
 
             closeButton?.setOnClickListener {

@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -20,19 +21,22 @@ class CameraHandler (
     private val context: Context,
     private val previewView: PreviewView,
     private val detectionHandler: DetectionHandler,
-    private val imageCapturingHandler: ImageCapturingHandler
+    imageCapturingHandler: ImageCapturingHandler
 ) {
+    private val imageCapture: ImageCapture = ImageCapture.Builder().build()
     private var imageAnalyzer: ImageAnalysis? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private var cameraControl: CameraControl? = null
     private var cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
-    private var lensFacing: Int = CameraSelector.LENS_FACING_BACK
-    private var isFlash: Boolean = false
+    var lensFacing: Int = CameraSelector.LENS_FACING_BACK
+    var isFlash: Boolean = false
 
     enum class CameraMode {
         LIVE,
         IMAGE_CAPTURE
     }
+
+    init { imageCapturingHandler.setImageCapture(imageCapture) }
 
     fun startInitialCamera() {
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -60,32 +64,44 @@ class CameraHandler (
 
                 cameraControl = camera?.cameraControl
             } catch (exc: Exception) {
-                Log.e("CameraHandler", "Use case of Live Detection binding failed", exc)
+                Log.e("CameraHandler", "Initial camera binding failed", exc)
             }
         }, ContextCompat.getMainExecutor(context))
     }
 
     fun startCamera(cameraMode: CameraMode) {
-        cameraExecutor = Executors.newSingleThreadExecutor()
+        Log.d("CameraHandler", "Connecting camera")
+
+        if (cameraExecutor.isShutdown) {
+            cameraExecutor = Executors.newSingleThreadExecutor()
+        }
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
             cameraProvider = cameraProviderFuture.get()
 
-            if (cameraMode == CameraMode.LIVE) {
-                bindLive()
-            } else {
-                bindImageCapture()
+            when (cameraMode) {
+                CameraMode.LIVE -> bindLive()
+                CameraMode.IMAGE_CAPTURE -> bindImageCapture()
             }
         }, ContextCompat.getMainExecutor(context))
+
+        Log.d("CameraHandler", "Camera connected")
     }
 
     fun stopCamera() {
+        Log.d("CameraHandler", "Disconnecting camera")
+
         cameraProvider?.unbindAll()
         cameraProvider = null
         cameraControl = null
-        cameraExecutor.shutdown()
         isFlash = false
+
+        if (!cameraExecutor.isShutdown) {
+            cameraExecutor.shutdown()
+        }
+
+        Log.d("CameraHandler", "Camera disconnected")
     }
 
     fun switchCamera(currentCameraMode: CameraMode) {
@@ -94,8 +110,13 @@ class CameraHandler (
         } else {
             CameraSelector.LENS_FACING_BACK
         }
+        Log.d("CameraHandler", "Switching to $lensFacing")
 
+        stopCamera()
+        startInitialCamera()
         startCamera(currentCameraMode)
+
+        Log.d("CameraHandler", "Camera switched")
     }
 
     fun toggleFlash(): Boolean {
@@ -107,6 +128,7 @@ class CameraHandler (
     private fun bindLive() {
         Log.d("CameraHandler", "Binding Live Detection")
 
+        imageAnalyzer?.clearAnalyzer()
         imageAnalyzer = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .setTargetRotation(previewView.display.rotation)
@@ -116,7 +138,7 @@ class CameraHandler (
         imageAnalyzer!!.setAnalyzer(cameraExecutor) { imageProxy ->
             try {
                 val bitmapBuffer = createBitmap(imageProxy.width, imageProxy.height)
-                imageProxy.use { bitmapBuffer.copyPixelsFromBuffer(imageProxy.planes[0].buffer) }
+                imageProxy.use { bitmapBuffer.copyPixelsFromBuffer(it.planes[0].buffer) }
 
                 val matrix = Matrix().apply {
                     postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
@@ -133,7 +155,7 @@ class CameraHandler (
         }
 
         try {
-            imageCapturingHandler.imageCapture.let { cameraProvider?.unbind(it) }
+            cameraProvider?.unbind(imageCapture)
 
             val cameraSelector = CameraSelector.Builder()
                 .requireLensFacing(lensFacing)
@@ -156,8 +178,6 @@ class CameraHandler (
     private fun bindImageCapture() {
         Log.d("CameraHandler", "Binding Image Capture")
 
-        // imageCapturingHandler.imageCapture = ImageCapture.Builder().build()
-
         try {
             imageAnalyzer?.let { cameraProvider?.unbind(it) }
 
@@ -168,7 +188,7 @@ class CameraHandler (
             val camera = cameraProvider?.bindToLifecycle(
                 context as AppCompatActivity,
                 cameraSelector,
-                imageCapturingHandler.imageCapture
+                imageCapture
             )
 
             cameraControl = camera?.cameraControl

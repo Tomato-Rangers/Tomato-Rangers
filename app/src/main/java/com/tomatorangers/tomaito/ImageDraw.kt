@@ -20,7 +20,7 @@ object ImageDraw {
         val canvas = Canvas(mutableBitmap)
         val paint = Paint().apply {
             style = Paint.Style.STROKE
-            strokeWidth = 8f
+            strokeWidth = 12f
             textAlign = Paint.Align.CENTER
         }
 
