@@ -23,7 +23,8 @@ class DetectionHandler(
     private var bitmap: Bitmap? = null
     private var fruitType = FruitType.UNKNOWN
     private var vitality = Vitality.UNDETECTED
-    private var cnfArray: FloatArray = floatArrayOf(0.0f, 0.0f)
+    // private var cnfArray: FloatArray = floatArrayOf(0.0f, 0.0f) TODO remove after advise
+    private var tempCnf: Float = 0.0f
     private var tempBox: BoundingBox = BoundingBox(
         0.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 0.0f, 0.0f,
@@ -148,7 +149,9 @@ class DetectionHandler(
                 Log.d("Detection", "Detected fruit: $fruitType")
 
                 tempBox = box
-                cnfArray[0] = box.cnf
+                // cnfArray[0] = box.cnf
+
+                tempCnf = box.cnf
 
                 when (fruitType) {
                     FruitType.TOMATO -> {
@@ -165,7 +168,8 @@ class DetectionHandler(
                 // set cnf to the average cnf of both detection
                 // otherwise it use its fruit type cnf
                 if (box.vit != Vitality.UNKNOWN && box.vit != Vitality.UNDETECTED) {
-                    box.cnf = (cnfArray[0] + cnfArray[1]) / 2
+                    // box.cnf = (cnfArray[0] + cnfArray[1]) / 2 TODO remove after advise
+                    box.cnf = tempCnf
                 }
 
                 vitality = Vitality.UNDETECTED // reset
@@ -203,14 +207,16 @@ class DetectionHandler(
                     Log.d("Detection", "Similar box found for vitality checking")
 
                     vitality = detectRipeness(box)
-                    cnfArray[1] = box.cnf
+                    tempCnf = box.cnf
+                    // cnfArray[1] = box.cnf TODO remove after advise
+                    return
                 } else {
                     Log.d("Detection", "Box does not match")
-
-                    vitality = Vitality.UNKNOWN
                 }
-                break
             }
+
+            vitality = Vitality.UNKNOWN
+            Log.d("Detection", "No similar box detected")
         }
     }
 
