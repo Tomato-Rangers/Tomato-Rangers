@@ -9,6 +9,7 @@
     android:background="@drawable/bg"
     tools:context=".MainActivity">
 
+    <!-- Camera Preview -->
     <androidx.camera.view.PreviewView
         android:id="@+id/preview"
         android:layout_width="0dp"
@@ -22,6 +23,7 @@
         app:layout_constraintVertical_bias="0.5"
         app:scaleType="fillStart" />
 
+    <!-- Live Detection Overlay -->
     <com.tomatorangers.tomaito.LiveDraw
         android:id="@+id/liveDraw"
         android:layout_width="0dp"
@@ -36,6 +38,22 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.5" />
 
+    <!-- Focus Ring -->
+    <ImageView
+        android:id="@+id/focusRing"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:visibility="gone"
+        android:src="@drawable/focus_ring"
+        android:layout_margin="0dp"
+        android:translationZ="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:ignore="ContentDescription" />
+
+    <!-- Captured Image View -->
     <ImageView
         android:id="@+id/detectedImageView"
         android:layout_width="match_parent"
@@ -46,6 +64,7 @@
         android:visibility="gone"
         tools:ignore="ContentDescription" />
 
+    <!-- UI -->
     <ImageButton
         android:id="@+id/flashBtn"
         android:layout_width="50dp"

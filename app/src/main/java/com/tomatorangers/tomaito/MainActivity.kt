@@ -2,6 +2,7 @@ package com.tomatorangers.tomaito
 
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
@@ -95,6 +96,7 @@ class MainActivity : AppCompatActivity() {
         cameraHandler = CameraHandler(
             this,
             viewBinding.preview,
+            // viewBinding.focusRing, TODO
             detectionHandler,
             imageCapturingHandler
         )
@@ -245,7 +247,10 @@ class MainActivity : AppCompatActivity() {
         private val REQUIRED_PERMISSIONS =
             mutableListOf(
                 android.Manifest.permission.CAMERA,
-                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ).toTypedArray()
+            ).apply {
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                    add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }.toTypedArray()
     }
 }

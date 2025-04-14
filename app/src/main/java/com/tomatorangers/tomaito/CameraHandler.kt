@@ -4,9 +4,14 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.util.Log
+import android.view.MotionEvent
+import android.view.View
+import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraControl
+import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
@@ -16,18 +21,22 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.createBitmap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class CameraHandler (
     private val context: Context,
     private val previewView: PreviewView,
+    // private val focusRingPreview: ImageView, TODO
     private val detectionHandler: DetectionHandler,
     imageCapturingHandler: ImageCapturingHandler
 ) {
+    private lateinit var cameraInfo: CameraInfo
     private val imageCapture: ImageCapture = ImageCapture.Builder().build()
     private var imageAnalyzer: ImageAnalysis? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private var cameraControl: CameraControl? = null
     private var cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    // private var focusRingVisible = false TODO
     var lensFacing: Int = CameraSelector.LENS_FACING_BACK
     var isFlash: Boolean = false
 
@@ -63,6 +72,8 @@ class CameraHandler (
                     preview)
 
                 cameraControl = camera?.cameraControl
+                cameraInfo = camera?.cameraInfo!!
+                enableTouchToFocus()
             } catch (exc: Exception) {
                 Log.e("CameraHandler", "Initial camera binding failed", exc)
             }
@@ -84,6 +95,8 @@ class CameraHandler (
                 CameraMode.LIVE -> bindLive()
                 CameraMode.IMAGE_CAPTURE -> bindImageCapture()
             }
+
+            if (lensFacing == CameraSelector.LENS_FACING_BACK) enableTouchToFocus()
         }, ContextCompat.getMainExecutor(context))
 
         Log.d("CameraHandler", "Camera connected")
@@ -124,6 +137,60 @@ class CameraHandler (
         isFlash = !isFlash
         return isFlash
     }
+
+    private fun enableTouchToFocus() {
+        previewView.setOnTouchListener { view, event ->
+            if (event.action == MotionEvent.ACTION_UP) {
+                view.performClick()
+
+                val factory = previewView.meteringPointFactory
+                val point = factory.createPoint(event.x, event.y)
+
+                val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
+                    .setAutoCancelDuration(3, TimeUnit.SECONDS)
+                    .build()
+
+                if (::cameraInfo.isInitialized && cameraInfo.isFocusMeteringSupported(action)) {
+                    cameraControl?.startFocusAndMetering(action)
+                }
+
+                return@setOnTouchListener true
+                // showFocusRing(event.x, event.y) TODO
+            }
+
+            return@setOnTouchListener true
+        }
+    }
+
+    /*private fun showFocusRing(x: Float, y: Float) { TODO
+        if (!focusRingVisible) {
+            focusRingVisible = true
+
+            focusRingPreview.post {
+                focusRingPreview.apply {
+                    visibility = View.VISIBLE
+                    translationX = x - width / 2
+                    translationY = y - height / 2
+                    scaleX = 1f
+                    scaleY = 1f
+                    alpha = 1f
+
+                    animate()
+                        .scaleX(1.5f)
+                        .scaleY(1.5f)
+                        .alpha(0f)
+                        .setDuration(500)
+                        .withEndAction {
+                            visibility = View.GONE
+                            focusRingVisible = false
+                        }
+                        .start()
+
+                    focusRingVisible = true
+                }
+            }
+        }
+    }*/
 
     private fun bindLive() {
         Log.d("CameraHandler", "Binding Live Detection")
