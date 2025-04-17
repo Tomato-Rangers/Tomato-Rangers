@@ -133,6 +133,8 @@ class DetectionHandler(
                 else if (activity.currentCameraMode == CameraHandler.CameraMode.IMAGE_CAPTURE) {
                     imageCaptureListener.onEmptyDetect()
                 }
+
+                viewBinding.detectionResultText.text = context.getString(R.string.no_objects_detected)
             }
 
             bitmap?.recycle()
@@ -186,6 +188,8 @@ class DetectionHandler(
                         liveDetectorListener.onDetect(boundingBoxes, activity.isSwitchingMode)
                     }
                 }
+
+                viewBinding.detectionResultText.text = context.getString(R.string.object_count, boundingBoxes.size)
             }
 
             fruitType = FruitType.UNKNOWN // reset

@@ -137,19 +137,26 @@ class MainActivity : AppCompatActivity() {
             isSwitchingMode = true
 
             currentCameraMode = if (currentCameraMode == CameraHandler.CameraMode.LIVE) {
-                // to avoid image saving on detection delay
+                // to avoid image saving on mode switch while detection due to delay
                 viewBinding.root.postDelayed({
                     isSwitchingMode = false
                 }, 3000)
 
+                // ui updates
+                viewBinding.captureBtn.visibility = View.VISIBLE
                 viewBinding.liveDraw.visibility = View.GONE
+
                 CameraHandler.CameraMode.IMAGE_CAPTURE
             } else {
+                // ui updates
                 liveDetectionHandler.clear()
+                viewBinding.captureBtn.visibility = View.GONE
                 viewBinding.liveDraw.visibility = View.VISIBLE
+
                 isSwitchingMode = false
                 CameraHandler.CameraMode.LIVE
             }
+            viewBinding.detectionResultText.text = getString(R.string.no_objects_detected) // reset
 
             cameraHandler.startCamera(currentCameraMode)
         }
