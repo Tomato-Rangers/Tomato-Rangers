@@ -1,6 +1,7 @@
 package com.tomatorangers.tomaito
 
 import android.content.Context
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -14,9 +15,12 @@ class CameraHandler(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
 ) {
+    private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private val preview = Preview.Builder().build()
     var cameraSelector by mutableStateOf(CameraSelector.DEFAULT_BACK_CAMERA)
+    var torchEnabled by mutableStateOf(false)
+        private set
 
     suspend fun startCamera() {
         cameraProvider = ProcessCameraProvider.awaitInstance(context)
@@ -31,7 +35,15 @@ class CameraHandler(
                 CameraSelector.DEFAULT_BACK_CAMERA
             }
 
+        // disable torch upon flipping
+        torchEnabled = false
+
         bindCamera()
+    }
+
+    fun toggleTorch() {
+        torchEnabled = !torchEnabled
+        camera?.cameraControl?.enableTorch(torchEnabled)
     }
 
     fun setSurfaceProvider(surfaceProvider: Preview.SurfaceProvider) {
@@ -43,7 +55,7 @@ class CameraHandler(
 
         provider.unbindAll()
 
-        provider.bindToLifecycle(
+        camera = provider.bindToLifecycle(
             lifecycleOwner,
             cameraSelector,
             preview,
