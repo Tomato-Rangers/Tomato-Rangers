@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -12,12 +11,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.tomatorangers.tomaito.components.CameraControls
-import com.tomatorangers.tomaito.components.CameraPreview
+import com.tomatorangers.tomaito.camerax.components.CameraControls
+import com.tomatorangers.tomaito.camerax.CameraHandler
+import com.tomatorangers.tomaito.camerax.components.CameraPreview
 import com.tomatorangers.tomaito.permission.PermissionGate
 import com.tomatorangers.tomaito.ui.theme.TomAitoTheme
 
@@ -61,7 +59,7 @@ fun CameraScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(innerPadding),
-        torchEnabled = cameraHandler.torchEnabled,
+        cameraHandler = cameraHandler,
         onCaptureClick = {},
         onFlipCameraClick = {
             cameraHandler.flipCamera()
@@ -74,18 +72,18 @@ fun CameraScreen(
     )
 }
 
-@Preview
-@Composable
-fun CameraControlsPreview() {
-    CameraControls(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black),
-        torchEnabled = false,
-        onCaptureClick = {},
-        onFlipCameraClick = {},
-        onGalleryClick = {},
-        onSettingsClick = {},
-        onTorchClick = {},
-    )
-}
+//@Preview
+//@Composable
+//fun CameraControlsPreview() {
+//    CameraControls(
+//        modifier = Modifier
+//            .fillMaxSize()
+//            .background(Color.Black),
+//        cameraHandler = CameraHandler,
+//        onCaptureClick = {},
+//        onFlipCameraClick = {},
+//        onGalleryClick = {},
+//        onSettingsClick = {},
+//        onTorchClick = {},
+//    )
+//}

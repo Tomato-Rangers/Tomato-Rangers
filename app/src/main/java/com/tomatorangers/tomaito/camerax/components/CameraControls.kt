@@ -1,5 +1,6 @@
 package com.tomatorangers.tomaito.camerax.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -66,8 +67,7 @@ fun CameraControls(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 24.dp)
                 .background(
-                    color = Color.White.copy(alpha = 0.35f),
-                    shape = RoundedCornerShape(50)
+                    color = Color.White.copy(alpha = 0.35f), shape = RoundedCornerShape(50)
                 )
                 .padding(horizontal = 32.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -83,7 +83,22 @@ fun CameraControls(
 
             // capture button
             ActionButton(
-                onClick = onCaptureClick,
+                onClick = {
+                    cameraHandler.takePhoto(
+                        onPhotoSaved = { uri ->
+                            Log.d(
+                                "Camera",
+                                "Saved: $uri"
+                            )
+                        },
+                        onError = { exception ->
+                            Log.d(
+                                "Camera",
+                                "Capture failed",
+                                exception)
+                        }
+                    )
+                },
                 icon = painterResource(R.drawable.camera_capture),
                 contentDescription = "Take photo"
             )
