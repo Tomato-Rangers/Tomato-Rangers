@@ -13,17 +13,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.tomatorangers.tomaito.camerax.components.CameraControls
 import com.tomatorangers.tomaito.camerax.CameraHandler
+import com.tomatorangers.tomaito.camerax.components.CameraControls
 import com.tomatorangers.tomaito.camerax.components.CameraPreview
+import com.tomatorangers.tomaito.camerax.components.PhotoPreview
 import com.tomatorangers.tomaito.permission.PermissionGate
 import com.tomatorangers.tomaito.ui.theme.TomAitoTheme
+import java.io.File
+import kotlin.apply
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,46 +61,71 @@ fun CameraScreen(
         )
     }
 
-    CameraPreview(
-        modifier = Modifier
-            .fillMaxSize(),
-        cameraHandler,
-    )
+    var capturedPhoto by remember {
+        mutableStateOf<File?>(null)
+    }
 
-    CameraControls(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(innerPadding),
-        cameraHandler = cameraHandler,
-        onCaptureClick = {
-            cameraHandler.takePhoto(
-                onPhotoSaved = { uri ->
-                    Log.d(
-                        "Camera",
-                        "Saved: $uri"
-                    )
-                },
-                onError = { exception ->
-                    Log.d(
-                        "Camera",
-                        "Capture failed",
-                        exception
+    if (capturedPhoto == null) {
+        CameraPreview(
+            modifier = Modifier
+                .fillMaxSize(),
+            cameraHandler,
+        )
+
+        CameraControls(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            cameraHandler = cameraHandler,
+            onCaptureClick = {
+                cameraHandler.takePhoto(
+                    onPhotoCaptured = { file ->
+                        capturedPhoto = file
+                    },
+                    onError = { exception ->
+                        Log.d(
+                            "Camera",
+                            "Capture failed",
+                            exception
+                        )
+                    }
+                )
+            },
+            onGalleryClick = {
+                val intent = Intent().apply{
+                    action = Intent.ACTION_VIEW
+                    setDataAndType(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        "image/*"
                     )
                 }
-            )
-        },
-        onGalleryClick = {
-            val intent = Intent(
-                Intent.ACTION_VIEW,
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-            ).apply {
-                type = "image/*"
-            }
 
-            context.startActivity(intent)
-        },
-        onSettingsClick = {},
-    )
+                context.startActivity(intent)
+            },
+            onSettingsClick = {},
+        )
+
+    } else {
+        PhotoPreview(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            photoFile = capturedPhoto!!,
+            onSave = {
+                cameraHandler.savePhoto(
+                    photoFile = capturedPhoto!!,
+                    onSaved = { capturedPhoto = null },
+                    onError = { exception ->
+                        Log.e("Camera", "Save failed", exception)
+                    }
+                )
+            },
+            onDiscard = {
+                cameraHandler.discardPhoto(capturedPhoto!!)
+                capturedPhoto = null
+            }
+        )
+    }
 }
 
 @Preview
