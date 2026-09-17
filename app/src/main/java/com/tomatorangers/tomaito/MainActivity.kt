@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,7 +15,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.tomatorangers.tomaito.camerax.components.CameraControls
 import com.tomatorangers.tomaito.camerax.CameraHandler
@@ -80,9 +83,6 @@ fun CameraScreen(
                 }
             )
         },
-        onFlipCameraClick = {
-            cameraHandler.flipCamera()
-        },
         onGalleryClick = {
             val intent = Intent(
                 Intent.ACTION_VIEW,
@@ -94,24 +94,22 @@ fun CameraScreen(
             context.startActivity(intent)
         },
         onSettingsClick = {},
-        onTorchClick = {
-            cameraHandler.toggleTorch()
-        },
     )
 }
 
-//@Preview
-//@Composable
-//fun CameraControlsPreview() {
-//    CameraControls(
-//        modifier = Modifier
-//            .fillMaxSize()
-//            .background(Color.Black),
-//        cameraHandler = CameraHandler,
-//        onCaptureClick = {},
-//        onFlipCameraClick = {},
-//        onGalleryClick = {},
-//        onSettingsClick = {},
-//        onTorchClick = {},
-//    )
-//}
+@Preview
+@Composable
+fun CameraControlsPreview() {
+    CameraControls(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        cameraHandler = CameraHandler(
+            context = LocalContext.current,
+            lifecycleOwner = LocalLifecycleOwner.current,
+        ),
+        onCaptureClick = {},
+        onGalleryClick = {},
+        onSettingsClick = {},
+    )
+}

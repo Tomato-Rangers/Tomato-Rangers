@@ -11,6 +11,7 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
+import androidx.compose.foundation.Image
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -32,7 +33,8 @@ class CameraHandler(
     private var imageCapture: ImageCapture? = null
 
     var cameraSelector by mutableStateOf(CameraSelector.DEFAULT_BACK_CAMERA)
-    var hasFlash by mutableStateOf(false)
+    var hasFlashUnit by mutableStateOf(true) // true for preview
+    var flashEnabled by mutableStateOf(false)
     var torchEnabled by mutableStateOf(false)
         private set
 
@@ -59,8 +61,21 @@ class CameraHandler(
         preview.surfaceProvider = surfaceProvider
     }
 
+    fun toggleFlashMode() {
+        if (!hasFlashUnit) return
+
+        flashEnabled = !flashEnabled
+
+        imageCapture?.flashMode =
+            if (flashEnabled) {
+                ImageCapture.FLASH_MODE_ON
+            } else {
+                ImageCapture.FLASH_MODE_OFF
+            }
+    }
+
     fun toggleTorch() {
-        if (!hasFlash) return
+        if (!hasFlashUnit) return
 
         torchEnabled = !torchEnabled
         camera?.cameraControl?.enableTorch(torchEnabled)
@@ -128,6 +143,6 @@ class CameraHandler(
             imageCapture,
         )
 
-        hasFlash = camera!!.cameraInfo.hasFlashUnit()
+        hasFlashUnit = camera!!.cameraInfo.hasFlashUnit()
     }
 }
