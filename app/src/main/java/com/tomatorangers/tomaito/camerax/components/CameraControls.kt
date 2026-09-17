@@ -1,6 +1,11 @@
 package com.tomatorangers.tomaito.camerax.components
 
+import android.content.Intent
+import android.provider.MediaStore
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.tomatorangers.tomaito.R
@@ -83,22 +89,7 @@ fun CameraControls(
 
             // capture button
             ActionButton(
-                onClick = {
-                    cameraHandler.takePhoto(
-                        onPhotoSaved = { uri ->
-                            Log.d(
-                                "Camera",
-                                "Saved: $uri"
-                            )
-                        },
-                        onError = { exception ->
-                            Log.d(
-                                "Camera",
-                                "Capture failed",
-                                exception)
-                        }
-                    )
-                },
+                onClick = onCaptureClick,
                 icon = painterResource(R.drawable.camera_capture),
                 contentDescription = "Take photo"
             )
@@ -112,3 +103,48 @@ fun CameraControls(
         }
     }
 }
+
+//@Composable
+//private fun OpenGallery() {
+    // if you already have fetched context from somewhere(ex. MainActivity)
+    // comment this out and pass it here instead.
+//    val context = LocalContext.current
+//
+//    ActionButton(
+//        onClick = {
+//            val intent = Intent(
+//                Intent.ACTION_VIEW,
+//                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+//            ).apply {
+//                type = "image/*"
+//            }
+//
+//            context.startActivity(intent)
+//        },
+//        icon = painterResource(R.drawable.gallery),
+//        contentDescription = "Gallery"
+//    )
+//}
+
+
+//@Composable
+//private fun SelectFromGallery() {
+//    val launcher = rememberLauncherForActivityResult(
+//        contract = ActivityResultContracts.PickVisualMedia()
+//    ) { uri ->
+//        if (uri != null) {
+//        }
+//    }
+//
+//    ActionButton(
+//        onClick = {
+//            launcher.launch(
+//                PickVisualMediaRequest(
+//                    ActivityResultContracts.PickVisualMedia.ImageOnly
+//                )
+//            )
+//        },
+//        icon = painterResource(R.drawable.gallery),
+//        contentDescription = "Gallery"
+//    )
+//}

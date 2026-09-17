@@ -1,6 +1,9 @@
 package com.tomatorangers.tomaito
 
+import android.content.Intent
 import android.os.Bundle
+import android.provider.MediaStore
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -60,11 +63,36 @@ fun CameraScreen(
             .fillMaxSize()
             .padding(innerPadding),
         cameraHandler = cameraHandler,
-        onCaptureClick = {},
+        onCaptureClick = {
+            cameraHandler.takePhoto(
+                onPhotoSaved = { uri ->
+                    Log.d(
+                        "Camera",
+                        "Saved: $uri"
+                    )
+                },
+                onError = { exception ->
+                    Log.d(
+                        "Camera",
+                        "Capture failed",
+                        exception
+                    )
+                }
+            )
+        },
         onFlipCameraClick = {
             cameraHandler.flipCamera()
         },
-        onGalleryClick = {},
+        onGalleryClick = {
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            ).apply {
+                type = "image/*"
+            }
+
+            context.startActivity(intent)
+        },
         onSettingsClick = {},
         onTorchClick = {
             cameraHandler.toggleTorch()
