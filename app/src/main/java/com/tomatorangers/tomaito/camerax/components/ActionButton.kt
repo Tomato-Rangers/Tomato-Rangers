@@ -1,4 +1,4 @@
-package com.tomatorangers.tomaito.components
+package com.tomatorangers.tomaito.camerax.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

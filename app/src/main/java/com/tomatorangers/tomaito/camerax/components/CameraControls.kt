@@ -1,4 +1,4 @@
-package com.tomatorangers.tomaito.components
+package com.tomatorangers.tomaito.camerax.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,11 +13,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.tomatorangers.tomaito.R
+import com.tomatorangers.tomaito.camerax.CameraHandler
 
 @Composable
 fun CameraControls(
     modifier: Modifier = Modifier,
-    torchEnabled: Boolean,
+    cameraHandler: CameraHandler,
     onCaptureClick: () -> Unit,
     onFlipCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
@@ -27,23 +28,27 @@ fun CameraControls(
     Box(
         modifier = modifier
     ) {
-
         // TODO might make a column instead for both torch and flash
 
-        // torch button
-        ActionButton(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 24.dp, top = 24.dp),
-            onClick = onTorchClick,
-            icon =
-                if (torchEnabled) {
-                    painterResource(R.drawable.torch_on)
-                } else {
-                    painterResource(R.drawable.torch_off)
-                },
-            contentDescription = "Torch"
-        )
+        // show flash/torch button
+        // only if it has flash unit
+        if (cameraHandler.hasFlash) {
+
+            // torch button
+            ActionButton(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 24.dp, top = 24.dp),
+                onClick = onTorchClick,
+                icon =
+                    if (cameraHandler.torchEnabled) {
+                        painterResource(R.drawable.torch_on)
+                    } else {
+                        painterResource(R.drawable.torch_off)
+                    },
+                contentDescription = "Torch",
+            )
+        }
 
         // settings button
         ActionButton(
