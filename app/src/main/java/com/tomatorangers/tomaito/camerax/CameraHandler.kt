@@ -86,6 +86,8 @@ class CameraHandler(
         camera?.cameraControl?.enableTorch(torchEnabled)
     }
 
+    // takes a shot
+    // but does not save the photo immediately
     fun takePhoto(
         onPhotoCaptured: (File) -> Unit,
         onError: (ImageCaptureException) -> Unit,
@@ -121,6 +123,9 @@ class CameraHandler(
             })
     }
 
+
+    // saves the photo
+    // that came from takePhoto()
     fun savePhoto(
         photoFile: File,
         onSaved: (Uri) -> Unit,
@@ -129,21 +134,12 @@ class CameraHandler(
         try {
             val name = photoFile.nameWithoutExtension
             val contentValues = ContentValues().apply {
-                put(
-                    MediaStore.Images.Media.DISPLAY_NAME, "$name.jpg"
-                )
-
-                put(
-                    MediaStore.Images.Media.MIME_TYPE, "image/jpg"
-                )
-
-                put(
-                    MediaStore.Images.Media.RELATIVE_PATH, "DCIM/tomAIto"
-                )
+                put(MediaStore.Images.Media.DISPLAY_NAME, "$name.jpg")
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpg")
+                put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/tomAIto")
             }
 
             val resolver = context.contentResolver
-
             val uri = resolver.insert(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 contentValues,

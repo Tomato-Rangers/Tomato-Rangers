@@ -1,5 +1,6 @@
 package com.tomatorangers.tomaito
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.MediaStore
@@ -29,7 +30,6 @@ import com.tomatorangers.tomaito.camerax.components.PhotoPreview
 import com.tomatorangers.tomaito.permission.PermissionGate
 import com.tomatorangers.tomaito.ui.theme.TomAitoTheme
 import java.io.File
-import kotlin.apply
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
             TomAitoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     PermissionGate {
-                        CameraScreen(innerPadding)
+                        App(innerPadding)
                     }
                 }
             }
@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun CameraScreen(
+fun App(
     innerPadding: PaddingValues
 ) {
     val context = LocalContext.current
@@ -61,72 +61,91 @@ fun CameraScreen(
         )
     }
 
-    var capturedPhoto by remember {
-        mutableStateOf<File?>(null)
-    }
+    var capturedPhoto by remember { mutableStateOf<File?>(null) }
 
-    if (capturedPhoto == null) {
-        CameraPreview(
-            modifier = Modifier
-                .fillMaxSize(),
-            cameraHandler,
-        )
+    when {
+        capturedPhoto == null -> {
+            CameraScreen(
+                innerPadding = innerPadding,
+                context = context,
+                cameraHandler = cameraHandler,
+                onPhotoCaptured = { capturedPhoto = it }
+            )
+        }
 
-        CameraControls(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            cameraHandler = cameraHandler,
-            onCaptureClick = {
-                cameraHandler.takePhoto(
-                    onPhotoCaptured = { file ->
-                        capturedPhoto = file
-                    },
-                    onError = { exception ->
-                        Log.d(
-                            "Camera",
-                            "Capture failed",
-                            exception
-                        )
-                    }
-                )
-            },
-            onGalleryClick = {
-                val intent = Intent().apply{
-                    action = Intent.ACTION_VIEW
-                    setDataAndType(
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        "image/*"
+        else -> {
+            PhotoPreview(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                photoFile = capturedPhoto!!,
+
+                onSave = {
+                    cameraHandler.savePhoto(
+                        photoFile = capturedPhoto!!,
+                        onSaved = { capturedPhoto = null },
+                        onError = { exception ->
+                            Log.e("Camera", "Save failed", exception)
+                        }
                     )
+                },
+
+                onDiscard = {
+                    cameraHandler.discardPhoto(capturedPhoto!!)
+                    capturedPhoto = null
                 }
-
-                context.startActivity(intent)
-            },
-            onSettingsClick = {},
-        )
-
-    } else {
-        PhotoPreview(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            photoFile = capturedPhoto!!,
-            onSave = {
-                cameraHandler.savePhoto(
-                    photoFile = capturedPhoto!!,
-                    onSaved = { capturedPhoto = null },
-                    onError = { exception ->
-                        Log.e("Camera", "Save failed", exception)
-                    }
-                )
-            },
-            onDiscard = {
-                cameraHandler.discardPhoto(capturedPhoto!!)
-                capturedPhoto = null
-            }
-        )
+            )
+        }
     }
 }
+
+@Composable
+fun CameraScreen(
+    innerPadding: PaddingValues,
+    context: Context,
+    cameraHandler: CameraHandler,
+    onPhotoCaptured: (File) -> Unit,
+) {
+    CameraPreview(
+        modifier = Modifier.fillMaxSize(),
+        cameraHandler,
+    )
+
+    CameraControls(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding),
+        cameraHandler = cameraHandler,
+
+        onCaptureClick = {
+            cameraHandler.takePhoto(
+                onPhotoCaptured = onPhotoCaptured,
+                onError = { exception ->
+                    Log.d(
+                        "Camera",
+                        "Capture failed",
+                        exception
+                    )
+                }
+            )
+        },
+
+        onGalleryClick = {
+            val intent = Intent().apply {
+                action = Intent.ACTION_VIEW
+                setDataAndType(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    "image/*"
+                )
+            }
+
+            context.startActivity(intent)
+        },
+
+        onSettingsClick = {},
+    )
+}
+
 
 @Preview
 @Composable
